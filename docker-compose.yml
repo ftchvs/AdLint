@@ -1,0 +1,9 @@
+services:
+  adlint:
+    image: python:3.12-slim
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: >
+      sh -c "pip install -e . &&
+             python -m adlint scan examples/high_risk_tiktok_health.json --output-dir reports"

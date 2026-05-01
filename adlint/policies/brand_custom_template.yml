@@ -1,0 +1,26 @@
+policies:
+  - id: missing_affiliate_or_sponsor_disclosure
+    severity: medium
+    category: disclosure
+    description: Affiliate, creator, or sponsorship language may require clear disclosure.
+    modules: [disclosure, platform]
+    industries: [creator, wellness, health, finance]
+    requires_review: true
+    signals:
+      - affiliate
+      - sponsored
+      - paid partnership
+      - commission
+      - promo code
+    recommended_action: Add or verify clear sponsored, affiliate, or material-connection disclosure.
+    rewrite_strategy: add_disclosure
+
+  - id: landing_page_offer_mismatch
+    severity: medium
+    category: landing_page
+    description: Landing page content may not match the ad's offer or claim framing.
+    modules: [landing_page]
+    signals:
+      - mismatch_detected
+    recommended_action: Align the landing page headline, offer terms, and disclosures with the ad.
+    rewrite_strategy: clarify_terms

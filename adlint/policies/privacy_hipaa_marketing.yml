@@ -1,0 +1,35 @@
+policies:
+  - id: hipaa_marketing_review
+    severity: high
+    category: privacy
+    description: Health marketing by covered entities or business associates may require HIPAA review.
+    modules: [privacy]
+    industries: [health]
+    requires_review: true
+    signals:
+      - patient
+      - provider
+      - clinic
+      - covered entity
+      - business associate
+      - appointment
+      - medical record
+    recommended_action: Route for HIPAA marketing review; do not treat this as a definitive violation.
+    rewrite_strategy: add_review_reminder
+
+  - id: hipaa_tracking_technology_review
+    severity: high
+    category: privacy
+    description: Health context combined with tracking technology may require privacy review.
+    modules: [privacy]
+    industries: [health, wellness]
+    requires_review: true
+    signals:
+      - meta pixel
+      - facebook pixel
+      - google tag manager
+      - gtag
+      - conversion event
+      - client id
+    recommended_action: Review consent, tracking configuration, and business-associate requirements.
+    rewrite_strategy: add_review_reminder

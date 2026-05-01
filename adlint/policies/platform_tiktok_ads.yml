@@ -1,0 +1,47 @@
+policies:
+  - id: tiktok_weight_management_claim
+    severity: high
+    category: platform_policy
+    description: TikTok ads can restrict weight-management and body-image claims.
+    modules: [platform]
+    platforms: [tiktok]
+    industries: [health, wellness]
+    signals:
+      - lose * pounds
+      - weight loss
+      - skinny
+      - melts fat
+      - body transformation
+    recommended_action: Avoid body-image pressure and absolute weight-management language.
+    rewrite_strategy: wellness_support
+
+  - id: tiktok_misleading_content
+    severity: high
+    category: platform_policy
+    description: Misleading efficacy, urgency, or testimonial framing can trigger review.
+    modules: [platform]
+    platforms: [tiktok]
+    signals:
+      - guaranteed
+      - secret
+      - instant
+      - miracle
+      - everyone is switching
+    recommended_action: Use specific, substantiated, and qualified claims.
+    rewrite_strategy: soften_absolute
+
+  - id: tiktok_disclosure_risk
+    severity: medium
+    category: platform_policy
+    description: Sponsored, affiliate, or creator claims may need prominent disclosures.
+    modules: [platform]
+    platforms: [tiktok]
+    industries: [creator, wellness, health]
+    signals:
+      - sponsored
+      - affiliate
+      - partner
+      - paid partnership
+      - promo code
+    recommended_action: Confirm creator, sponsorship, and affiliate disclosures are prominent.
+    rewrite_strategy: add_disclosure

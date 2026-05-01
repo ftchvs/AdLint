@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adlint"
+version = "0.1.0"
+description = "Local-first ad compliance and brand-safety preflight checks."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+  { name = "AdLint Contributors" }
+]
+dependencies = [
+  "PyYAML>=6.0.2"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0"
+]
+
+[project.scripts]
+adlint = "adlint.cli:main"
+
+[tool.setuptools]
+packages = ["adlint", "adlint.classifiers", "adlint.rewrites", "adlint.rules", "adlint.scoring", "adlint.scrapers"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+adlint = ["policies/*.yml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

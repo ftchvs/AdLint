@@ -1,0 +1,95 @@
+policies:
+  - id: unsupported_health_claim
+    severity: high
+    category: health_claims
+    description: Health or wellness claim likely requiring substantiation.
+    modules: [health_claims]
+    industries: [health, wellness]
+    signals:
+      - clinically proven
+      - doctor recommended
+      - science-backed
+      - backed by science
+      - medical breakthrough
+    model_prompt: >
+      Determine whether this ad makes a health-related claim that would likely
+      require substantiation or compliance review under health marketing rules.
+    recommended_action: Remove or qualify the claim and provide substantiation.
+    rewrite_strategy: qualify_claim
+    example_positive:
+      - "Lose 20 pounds in 30 days guaranteed."
+    example_negative:
+      - "Support your wellness routine with daily nutrition. Results vary."
+
+  - id: guaranteed_outcome
+    severity: high
+    category: health_claims
+    description: Absolute outcome language increases substantiation risk.
+    modules: [health_claims]
+    signals:
+      - guaranteed
+      - risk-free
+      - instant results
+      - works for everyone
+      - no side effects
+    recommended_action: Replace absolute language with qualified, evidence-backed claims.
+    rewrite_strategy: soften_absolute
+
+  - id: weight_loss_claim
+    severity: high
+    category: health_claims
+    description: Weight-loss and body-image claims can trigger platform and FTC review.
+    modules: [health_claims, platform]
+    industries: [health, wellness]
+    signals:
+      - lose * pounds
+      - melts fat
+      - burn fat
+      - belly fat
+      - weight loss
+      - body transformation
+    recommended_action: Avoid absolute body or fat-loss language and route for review.
+    rewrite_strategy: wellness_support
+
+  - id: medical_cure_claim
+    severity: critical
+    category: health_claims
+    description: Medical cure, treatment, or diagnosis claims need formal review.
+    modules: [health_claims]
+    industries: [health, wellness]
+    signals:
+      - cure
+      - treats
+      - heals
+      - reverses diabetes
+      - diagnose
+      - prevents disease
+    recommended_action: Remove disease-treatment language unless reviewed and substantiated.
+    rewrite_strategy: remove_medical_language
+
+  - id: before_after_claim
+    severity: medium
+    category: health_claims
+    description: Before-and-after framing can imply atypical guaranteed results.
+    modules: [health_claims]
+    signals:
+      - before and after
+      - transformation photo
+      - see the difference
+      - dramatic results
+    recommended_action: Add context, substantiation, and typical-results disclosure.
+    rewrite_strategy: add_results_vary
+
+  - id: fake_urgency_scarcity
+    severity: medium
+    category: misrepresentation
+    description: Artificial urgency or scarcity can create misleading pressure.
+    modules: [health_claims, platform]
+    signals:
+      - only * left
+      - offer expires today
+      - act now
+      - last chance
+      - limited spots
+    recommended_action: Verify scarcity claims or remove pressure language.
+    rewrite_strategy: softer_cta
