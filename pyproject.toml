@@ -25,7 +25,7 @@ dev = [
 adlint = "adlint.cli:main"
 
 [tool.setuptools]
-packages = ["adlint", "adlint.classifiers", "adlint.rewrites", "adlint.rules", "adlint.scoring", "adlint.scrapers"]
+packages = ["adlint", "adlint.classifiers", "adlint.policies", "adlint.rewrites", "adlint.rules", "adlint.scoring", "adlint.scrapers"]
 include-package-data = true
 
 [tool.setuptools.package-data]
