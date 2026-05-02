@@ -5,8 +5,8 @@ launch.**
 
 > Status: runnable CLI MVP. This repository ships a local-first Python package,
 > deterministic policy engine, YAML policy files, JSON and Markdown reports,
-> examples, tests, and a seed eval runner. API and web UI surfaces remain future
-> phases.
+> a FastAPI service, examples, tests, and a seed eval runner. Web UI surfaces
+> remain future phases.
 
 AdLint is an open-source ad compliance and brand-safety engine for growth teams
 working in regulated or sensitive categories. It is designed to review ad copy,
@@ -125,6 +125,18 @@ Single-command local path:
 make dev
 ```
 
+API path:
+
+```bash
+make api
+```
+
+Endpoints:
+
+- `POST /analyze`
+- `POST /eval`
+- `GET /health`
+
 Docker path:
 
 ```bash
@@ -139,9 +151,9 @@ The CLI shape is:
 adlint scan <config>
 ```
 
-The first implementation pass includes the Python package, CLI command, policy
-loader, deterministic rule engine, transparent scoring, rewrite suggestions,
-report writer, seed evals, and sample data.
+The first implementation pass includes the Python package, CLI command, FastAPI
+service, policy loader, deterministic rule engine, transparent scoring, rewrite
+suggestions, report writer, seed evals, and sample data.
 
 Planned input shape:
 

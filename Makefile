@@ -3,7 +3,7 @@ VENV := .venv
 BIN := $(VENV)/bin
 STAMP := $(VENV)/.installed
 
-.PHONY: dev scan eval test install
+.PHONY: api dev scan eval test install
 
 install: $(STAMP)
 
@@ -14,6 +14,9 @@ $(STAMP): pyproject.toml
 
 dev: $(STAMP)
 	$(BIN)/python -m adlint scan examples/high_risk_tiktok_health.json --output-dir reports
+
+api: $(STAMP)
+	$(BIN)/uvicorn adlint.api:app --reload
 
 scan: $(STAMP)
 	$(BIN)/python -m adlint scan examples/needs_review_google_wellness.json
