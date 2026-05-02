@@ -25,6 +25,17 @@ Run the benchmark:
 make benchmark
 ```
 
+Validate or refresh policy coverage inventory:
+
+```bash
+make policy-coverage-validate
+make policy-coverage
+```
+
+The seed and benchmark datasets are complete-coverage gates for current
+policy ids. `real_cases_v1` is included in the inventory, but it remains
+diagnostic-only and should not block coverage completeness by itself.
+
 Compare rule-only, model-only, and hybrid modes:
 
 ```bash

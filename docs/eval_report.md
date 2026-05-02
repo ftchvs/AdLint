@@ -30,6 +30,17 @@ Run the 200-example benchmark and write JSON plus Markdown reports:
 make benchmark
 ```
 
+Refresh or validate the policy coverage inventory:
+
+```bash
+make policy-coverage
+make policy-coverage-validate
+```
+
+`docs/policy_coverage_matrix.md` inventories which policy ids appear across
+the seed, benchmark, and real-case datasets. Treat it as coverage tracking,
+not a quality or reliability metric.
+
 Run the original seed smoke eval:
 
 ```bash

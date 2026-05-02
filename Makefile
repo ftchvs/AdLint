@@ -3,7 +3,7 @@ VENV := .venv
 BIN := $(VENV)/bin
 STAMP := $(VENV)/.installed
 
-.PHONY: api dev scan eval benchmark benchmark-data model-benchmark model-smoke real-cases real-cases-hybrid real-cases-validate test install
+.PHONY: api dev scan eval benchmark benchmark-data policy-coverage policy-coverage-validate model-benchmark model-smoke real-cases real-cases-hybrid real-cases-validate test install
 
 install: $(STAMP)
 
@@ -29,6 +29,12 @@ benchmark-data: $(STAMP)
 
 benchmark: $(STAMP)
 	$(BIN)/python evals/run_eval.py evals/datasets/rule_benchmark_v1.jsonl --output evals/results/rule_benchmark_v1.json --markdown-output evals/results/rule_benchmark_v1.md
+
+policy-coverage: $(STAMP)
+	$(BIN)/python evals/validate_policy_coverage.py --markdown-output docs/policy_coverage_matrix.md
+
+policy-coverage-validate: $(STAMP)
+	$(BIN)/python evals/validate_policy_coverage.py --check docs/policy_coverage_matrix.md
 
 model-benchmark: $(STAMP)
 	$(BIN)/python evals/run_eval.py evals/datasets/rule_benchmark_v1.jsonl --mode all --output evals/results/model_comparison.json --markdown-output evals/results/model_comparison.md

@@ -68,6 +68,8 @@ make scan  # install and run the wellness example
 make api   # start uvicorn with adlint.api:app
 make eval  # run the seed evals and write evals/results/latest.json
 make benchmark    # run the 200-row synthetic policy regression benchmark
+make policy-coverage           # refresh docs/policy_coverage_matrix.md
+make policy-coverage-validate  # check the committed coverage matrix
 make real-cases   # run sourced public-case diagnostics
 make test  # run pytest
 ```
@@ -231,6 +233,16 @@ Run the larger deterministic benchmark:
 make benchmark
 ```
 
+Refresh or validate the policy coverage matrix:
+
+```bash
+make policy-coverage
+make policy-coverage-validate
+```
+
+The matrix is a coverage inventory for policy ids across seed, benchmark, and
+real-case datasets. It is not a quality or reliability metric.
+
 Run the public-source real-case diagnostics:
 
 ```bash
@@ -278,6 +290,7 @@ and marks the model status as `unavailable`.
 - `docs/legal_disclaimer.md`
 - `docs/local_models.md`
 - `docs/eval_report.md`
+- `docs/policy_coverage_matrix.md`
 - `docs/research_paper.md`
 - `docs/adlint_hybrid_eval_paper.tex`
 
