@@ -67,6 +67,11 @@ def to_markdown(result: AnalysisResult) -> str:
             lines.append(f"- URL: {page.url}")
         if page.title:
             lines.append(f"- Title: {page.title}")
+        _append_landing_page_list(lines, "Headings", page.headings)
+        _append_landing_page_list(lines, "Visible claims", page.visible_claims)
+        _append_landing_page_list(lines, "Forms", page.forms)
+        _append_landing_page_list(lines, "Pricing", page.pricing_text)
+        _append_landing_page_list(lines, "Disclaimers", page.disclaimers)
         if page.tracking_scripts:
             lines.append(f"- Trackers: {', '.join(page.tracking_scripts)}")
         if page.fetch_error:
@@ -82,6 +87,14 @@ def to_markdown(result: AnalysisResult) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def _append_landing_page_list(lines: list[str], label: str, values: tuple[str, ...]) -> None:
+    if not values:
+        return
+    lines.append(f"- {label}:")
+    for value in values:
+        lines.append(f"  - {value}")
 
 
 def write_reports(result: AnalysisResult, output_dir: str | Path) -> dict[str, str]:

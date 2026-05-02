@@ -97,3 +97,21 @@ def test_logging_is_opt_in(tmp_path) -> None:
     assert result.reports["log"] == str(log_path)
     logged = json.loads(log_path.read_text(encoding="utf-8").splitlines()[0])
     assert logged["input"]["headline"] == "Download campaign checklist"
+
+
+def test_logging_stays_disabled_without_opt_in(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    result = analyze(
+        {
+            "platform": "google",
+            "industry": "general",
+            "headline": "Download campaign checklist",
+            "body": "A free worksheet for launch planning.",
+            "cta": "Download",
+        }
+    )
+
+    assert result.logging_enabled is False
+    assert result.reports == {}
+    assert not (tmp_path / "logs" / "adlint-runs.jsonl").exists()
