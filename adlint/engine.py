@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from adlint.audit_log import write_run_log
 from adlint.classifiers.ollama import classify_with_ollama
 from adlint.models import AnalysisResult, PolicyHit, Submission
 from adlint.policy import enabled_modules, filter_policies, load_policies
@@ -33,6 +34,7 @@ def analyze(
             policy_modules=submission.policy_modules,
             model_enabled=enable_model,
             logging_enabled=submission.logging_enabled,
+            log_path=submission.log_path,
         )
 
     landing_page = extract_landing_page(submission.landing_page_url, submission.landing_page_html)
@@ -64,6 +66,8 @@ def analyze(
 
     if output_dir:
         result.reports = write_reports(result, output_dir)
+    if submission.logging_enabled:
+        result.reports["log"] = write_run_log(submission, result, submission.log_path)
     return result
 
 

@@ -78,3 +78,22 @@ def test_report_writer_outputs_json_and_markdown(tmp_path) -> None:
     assert markdown_report.exists()
     assert json.loads(json_report.read_text(encoding="utf-8"))["decision"] == result.decision
     assert "Decision-Support Disclaimer" in markdown_report.read_text(encoding="utf-8")
+
+
+def test_logging_is_opt_in(tmp_path) -> None:
+    log_path = tmp_path / "runs.jsonl"
+    result = analyze(
+        {
+            "platform": "google",
+            "industry": "general",
+            "headline": "Download campaign checklist",
+            "body": "A free worksheet for launch planning.",
+            "cta": "Download",
+            "logging_enabled": True,
+            "log_path": str(log_path),
+        }
+    )
+
+    assert result.reports["log"] == str(log_path)
+    logged = json.loads(log_path.read_text(encoding="utf-8").splitlines()[0])
+    assert logged["input"]["headline"] == "Download campaign checklist"

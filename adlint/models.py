@@ -123,6 +123,7 @@ class Submission:
     policy_modules: tuple[str, ...] = ()
     model_enabled: bool = False
     logging_enabled: bool = False
+    log_path: str | None = None
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "Submission":
@@ -140,6 +141,7 @@ class Submission:
             policy_modules=tuple(str(item) for item in modules),
             model_enabled=bool(raw.get("model_enabled", False)),
             logging_enabled=bool(raw.get("logging_enabled", False)),
+            log_path=raw.get("log_path"),
         )
 
     def ad_fields(self) -> dict[str, str]:

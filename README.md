@@ -240,6 +240,10 @@ The seed eval set includes 50 curated examples across health, wellness,
 finance, SaaS, creator disclosure, privacy, landing-page mismatch, and
 brand-safety scenarios. It is a starting point, not a real-world benchmark.
 
+Raw submissions are not persisted by default. To opt into JSONL logging for
+evaluation workflows, set `logging_enabled: true` in a config and optionally
+provide `log_path`.
+
 ## Example: high risk
 
 Input:
