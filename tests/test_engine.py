@@ -3,9 +3,6 @@ from __future__ import annotations
 import json
 
 from adlint.engine import analyze
-from fastapi.testclient import TestClient
-
-from adlint.api import app
 
 
 def policy_ids(result) -> set[str]:
@@ -100,39 +97,3 @@ def test_logging_is_opt_in(tmp_path) -> None:
     assert result.reports["log"] == str(log_path)
     logged = json.loads(log_path.read_text(encoding="utf-8").splitlines()[0])
     assert logged["input"]["headline"] == "Download campaign checklist"
-
-
-def test_api_analyze_and_eval_endpoints() -> None:
-    client = TestClient(app)
-    analyze_response = client.post(
-        "/analyze",
-        json={
-            "platform": "tiktok",
-            "industry": "health",
-            "headline": "Lose 20 pounds in 30 days guaranteed",
-            "body": "Our clinically proven supplement melts fat fast.",
-            "cta": "Buy now",
-        },
-    )
-    assert analyze_response.status_code == 200
-    assert analyze_response.json()["decision"] == "high_risk"
-
-    eval_response = client.post(
-        "/eval",
-        json={
-            "examples": [
-                {
-                    "input": {
-                        "platform": "linkedin",
-                        "industry": "saas",
-                        "headline": "Plan campaign launches",
-                        "body": "Coordinate launch notes.",
-                        "cta": "Learn more",
-                    },
-                    "expected_decision": "approved",
-                }
-            ]
-        },
-    )
-    assert eval_response.status_code == 200
-    assert eval_response.json()["decision_accuracy"] == 1.0

@@ -2,9 +2,36 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, ConfigDict, Field
 
 from adlint.engine import analyze
+
+
+class AnalyzeRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    platform: str = "google"
+    country: str = "US"
+    industry: str = "general"
+    headline: str = ""
+    body: str = ""
+    cta: str = ""
+    target_age_range: str | None = None
+    landing_page_url: str | None = None
+    landing_page_html: str | None = None
+    policy_modules: list[str] = Field(default_factory=list)
+    modules: list[str] | None = None
+    model_enabled: bool = False
+    logging_enabled: bool = False
+    log_path: str | None = None
+
+    def to_analyze_config(self) -> dict[str, Any]:
+        return self.model_dump(exclude_none=True)
+
+
+class EvalRequest(BaseModel):
+    examples: list[dict[str, Any]] = Field(default_factory=list)
 
 
 app = FastAPI(
@@ -20,21 +47,20 @@ def health() -> dict[str, str]:
 
 
 @app.post("/analyze")
-def analyze_endpoint(payload: dict[str, Any]) -> dict[str, Any]:
-    return analyze(payload).to_dict()
+def analyze_endpoint(payload: AnalyzeRequest) -> dict[str, Any]:
+    return analyze(payload.to_analyze_config()).to_dict()
 
 
 @app.post("/eval")
-def eval_endpoint(payload: dict[str, Any]) -> dict[str, Any]:
-    examples = payload.get("examples", [])
-    if not isinstance(examples, list):
-        raise ValueError("examples must be a list")
-
+def eval_endpoint(payload: EvalRequest) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
-    for index, item in enumerate(examples, start=1):
-        if not isinstance(item, dict):
-            raise ValueError(f"example {index} must be an object")
+    for index, item in enumerate(payload.examples, start=1):
         input_payload = item.get("input", item)
+        if not isinstance(input_payload, dict):
+            raise HTTPException(
+                status_code=422,
+                detail=f"example {index} input must be an object",
+            )
         expected_decision = item.get("expected_decision")
         result = analyze(input_payload)
         row = {
