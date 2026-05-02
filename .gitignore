@@ -6,3 +6,4 @@ reports/
 logs/
 evals/results/*.json
 evals/results/*.md
+docs/build/

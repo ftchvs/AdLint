@@ -2,11 +2,14 @@
 
 Status: deterministic rule benchmark v1.
 
-AdLint includes two labeled JSONL datasets:
+AdLint includes three labeled JSONL datasets:
 
 - `evals/datasets/seed_ads.jsonl`: the original 50-example smoke set.
 - `evals/datasets/rule_benchmark_v1.jsonl`: a 200-example benchmark generated
   from the seed set plus policy-author authored synthetic variants.
+- `evals/datasets/real_cases_v1.jsonl`: a 13-example public-source diagnostic
+  set derived from FTC, ASA/CAP, and DOJ/HUD-style public cases. The rows are
+  paraphrased and deterministic; they are not copied ad creative.
 
 The benchmark covers health, wellness, finance, SaaS, creator disclosure,
 privacy, landing-page mismatch, and brand-safety scenarios. It is regression
@@ -39,6 +42,24 @@ rule-based with model status metadata:
 
 ```bash
 make model-benchmark
+```
+
+Run a short required-model smoke check before a full model benchmark:
+
+```bash
+make model-smoke
+```
+
+Validate and run the public-source real-case diagnostic set:
+
+```bash
+make real-cases
+```
+
+Run the same real-case rows in rule-only, model-only, and hybrid modes:
+
+```bash
+make real-cases-hybrid
 ```
 
 Direct command used by the benchmark target:
@@ -86,10 +107,85 @@ Current confusion matrix:
 | needs_review | 0 | 48 | 0 |
 | high_risk | 0 | 0 | 101 |
 
+Current category-level precision and recall:
+
+| Category | Precision | Recall | False positives | False negatives |
+| --- | ---: | ---: | ---: | ---: |
+| brand_safety | 0.885 | 1.000 | 3 | 0 |
+| disclosure | 0.929 | 1.000 | 1 | 0 |
+| health_claims | 0.929 | 1.000 | 4 | 0 |
+| landing_page | 1.000 | 1.000 | 0 | 0 |
+| misrepresentation | 1.000 | 1.000 | 0 | 0 |
+| platform_policy | 1.000 | 1.000 | 0 | 0 |
+| privacy | 1.000 | 1.000 | 0 | 0 |
+
+## Real-case Diagnostic Results
+
+`real_cases_v1` is intentionally separate from the synthetic benchmark. It is
+too small and too biased toward known high-risk public actions to estimate
+production reliability. Its value is surfacing concrete policy-id misses,
+over-triggers, and hybrid-model changes on source-backed cases.
+
+The initial rule-only run produced:
+
+| Metric | Value |
+| --- | ---: |
+| Total examples | 13 |
+| Expected high_risk | 13 |
+| Decision mismatches | 0 |
+| Decision accuracy | 1.000 |
+| Policy false-negative review notes | 2 |
+| Policy false-positive review notes | 11 |
+
+The current decision metric is not strong reliability evidence because every
+seeded real-case row is high-risk by design. The useful signal is at policy
+level:
+
+- False negatives: `tiktok_disclosure_risk` on the Cerebral-style telehealth
+  tracking row, and `unsupported_health_claim` on the Hexpress-style
+  clinically backed weight-loss treatment row.
+- False positives: the largest cluster is privacy review over-triggering on
+  clinic/provider/appointment language (`hipaa_marketing_review`) and
+  broad health-data language (`ftc_health_breach_notification_indicator`).
+- Actionable interpretation: keep the real-case set diagnostic for now, and
+  grow it to balanced approved, needs-review, and high-risk cases before
+  treating rates as reliable.
+
+The latest full all-modes comparison was run with an intentionally unavailable
+loopback model endpoint:
+
+```bash
+ADLINT_OLLAMA_URL=http://127.0.0.1:9/api/chat make model-benchmark
+```
+
+Rule-only and hybrid modes both completed 200 scored examples with 1.000
+decision accuracy. Model-only scored 0 examples and skipped all 200 rows
+because the local Ollama-compatible endpoint was unavailable. Treat that as a
+runtime availability result, not model-quality evidence.
+
+A separate model smoke check now verifies the configured local Ollama model on
+the first three seed rows and fails if any model-required row cannot run. The
+latest smoke run completed with model status `ok` for all model-required rows:
+
+| Smoke mode | Scored rows | Skipped rows | Decision accuracy | Model status |
+| --- | ---: | ---: | ---: | --- |
+| rule-only | 3 | 0 | 1.000 | `disabled: 3` |
+| model-only | 3 | 0 | 0.667 | `ok: 3` |
+| hybrid | 3 | 0 | 1.000 | `ok: 3` |
+
+This proves local model availability. It also shows why model-only should not
+replace deterministic rules yet: the local model still undercalled one health
+review row in the smoke subset and maps concerns to `model_policy_review`
+rather than the detailed YAML policy ids.
+
 Known policy-label review notes include broad `guaranteed_outcome` matches in
 finance or professional-outcome copy, `brand_safety_misinformation` matches
 when phrases such as "miracle cure" appear in health or creator examples, and
 sensitive-social-issue matches on some LinkedIn targeting examples.
+
+For a paper-style summary of the benchmark design and result interpretation,
+see `docs/research_paper.md`. For the compiled LaTeX paper with charts,
+tables, and architecture diagrams, see `docs/adlint_hybrid_eval_paper.tex`.
 
 ## Limitations
 

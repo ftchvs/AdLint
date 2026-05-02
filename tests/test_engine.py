@@ -77,7 +77,9 @@ def test_report_writer_outputs_json_and_markdown(tmp_path) -> None:
     assert json_report.exists()
     assert markdown_report.exists()
     assert json.loads(json_report.read_text(encoding="utf-8"))["decision"] == result.decision
-    assert "Decision-Support Disclaimer" in markdown_report.read_text(encoding="utf-8")
+    markdown = markdown_report.read_text(encoding="utf-8")
+    assert "- Model status: `disabled`" in markdown
+    assert "Decision-Support Disclaimer" in markdown
 
 
 def test_logging_is_opt_in(tmp_path) -> None:
@@ -115,3 +117,24 @@ def test_logging_stays_disabled_without_opt_in(tmp_path, monkeypatch) -> None:
     assert result.logging_enabled is False
     assert result.reports == {}
     assert not (tmp_path / "logs" / "adlint-runs.jsonl").exists()
+
+
+def test_ollama_model_without_model_enabled_does_not_call_classifier(monkeypatch) -> None:
+    def fail_classifier(*args, **kwargs):  # pragma: no cover - must not be called
+        raise AssertionError("classifier should only run when model_enabled is true")
+
+    monkeypatch.setattr("adlint.engine.classify_with_ollama", fail_classifier)
+
+    result = analyze(
+        {
+            "platform": "google",
+            "industry": "general",
+            "headline": "Download campaign checklist",
+            "body": "A free worksheet for launch planning.",
+            "cta": "Download",
+            "model_enabled": False,
+        },
+        ollama_model="llama3.2:latest",
+    )
+
+    assert result.model == {"enabled": False, "provider": None, "status": "disabled"}

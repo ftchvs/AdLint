@@ -3,39 +3,46 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AdLint Review</title>
+    <title>AdLint Preflight</title>
     <link rel="stylesheet" href="/ui/styles.css" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Local preflight</p>
+          <p class="eyebrow">Ad preflight</p>
           <h1>AdLint</h1>
         </div>
-        <p class="topbar-note">Decision-support software, not legal advice.</p>
+        <p class="topbar-note">Policy review for draft ads. Not legal advice.</p>
       </header>
 
       <main class="workspace">
         <form id="review-form" class="panel input-panel">
           <div class="panel-heading">
-            <h2>Review input</h2>
-            <button class="secondary-button" type="reset">Reset</button>
+            <h2>Draft ad</h2>
+            <button class="secondary-button" type="reset">Reset sample</button>
           </div>
 
           <label>
             Headline
-            <input id="headline" name="headline" autocomplete="off" placeholder="Lose 20 pounds in 30 days guaranteed" />
+            <input
+              id="headline"
+              name="headline"
+              autocomplete="off"
+              placeholder="Ad headline"
+              value="GLP-1 weight loss consults from home"
+              required
+            />
           </label>
 
           <label>
             Body
-            <textarea id="body" name="body" rows="5" placeholder="Our clinically proven supplement melts fat fast."></textarea>
+            <textarea id="body" name="body" rows="5" placeholder="Primary ad copy" required>See if compounded semaglutide is right for you. Online prescription support, simple check-ins, and results that can help you lose weight fast. No insurance required.</textarea>
           </label>
 
           <label>
             CTA
-            <input id="cta" name="cta" autocomplete="off" placeholder="Buy now" />
+            <input id="cta" name="cta" autocomplete="off" placeholder="Call to action" value="Check eligibility" required />
           </label>
 
           <div class="field-grid">
@@ -52,7 +59,7 @@
               Industry
               <select id="industry" name="industry">
                 <option value="general">General</option>
-                <option value="health">Health</option>
+                <option value="health" selected>Health</option>
                 <option value="wellness">Wellness</option>
                 <option value="finance">Finance</option>
                 <option value="saas">SaaS</option>
@@ -60,6 +67,28 @@
               </select>
             </label>
           </div>
+
+          <fieldset class="local-model-fieldset">
+            <legend>Local model</legend>
+            <label class="checkbox-row">
+              <input id="model_enabled" name="model_enabled" type="checkbox" checked />
+              Include local model review
+            </label>
+            <label>
+              Model
+              <input
+                id="ollama_model"
+                name="ollama_model"
+                list="ollama-model-options"
+                autocomplete="off"
+                value="gpt-oss-safeguard:20b"
+                placeholder="gpt-oss-safeguard:20b"
+              />
+            </label>
+            <datalist id="ollama-model-options">
+              <option value="gpt-oss-safeguard:20b"></option>
+            </datalist>
+          </fieldset>
 
           <fieldset>
             <legend>Policy modules</legend>
@@ -74,35 +103,46 @@
           </fieldset>
 
           <label>
-            Landing page URL
+            Landing URL
             <input id="landing_page_url" name="landing_page_url" type="url" placeholder="https://example.com/offer" />
           </label>
 
           <label>
-            Landing page HTML
+            Landing HTML
             <textarea id="landing_page_html" name="landing_page_html" rows="5" placeholder="<html><body><h1>Offer details</h1></body></html>"></textarea>
           </label>
 
-          <button class="primary-button" type="submit">Analyze</button>
+          <button class="primary-button" type="submit">Run review</button>
         </form>
 
         <section class="panel result-panel" aria-live="polite">
           <div class="panel-heading">
-            <h2>Review result</h2>
-            <div id="export-actions" class="export-actions" hidden>
-              <button id="copy-json" class="secondary-button" type="button">Copy JSON</button>
-              <button id="export-json" class="secondary-button" type="button">Export JSON</button>
-              <button id="export-markdown" class="secondary-button" type="button">Export Markdown</button>
+            <div>
+              <p class="eyebrow">Result</p>
+              <h2>Ad review</h2>
+            </div>
+            <div class="result-toolbar">
+              <div id="result-tabs" class="result-tabs" hidden>
+                <button class="tab-button is-active" type="button" data-result-view="findings">Findings</button>
+                <button class="tab-button" type="button" data-result-view="processing">Trace</button>
+                <button class="tab-button" type="button" data-result-view="raw">Raw JSON</button>
+              </div>
+              <div id="export-actions" class="export-actions" hidden>
+                <button id="copy-json" class="secondary-button" type="button">Copy JSON</button>
+                <button id="export-json" class="secondary-button" type="button">Export JSON</button>
+                <button id="export-markdown" class="secondary-button" type="button">Export Markdown</button>
+              </div>
             </div>
           </div>
           <div id="status-empty" class="state-block is-visible">
-            <p class="state-title">Waiting for an ad</p>
-            <p class="muted">Enter copy, choose the review surface, and run a local analysis.</p>
+            <p class="state-title">Ready to review</p>
+            <p class="muted">Edit the sample, choose modules, then run a local preflight.</p>
           </div>
           <div id="status-loading" class="state-block">
             <div class="loader" aria-hidden="true"></div>
-            <p class="state-title">Analyzing</p>
-            <p class="muted">Running deterministic policy checks through the local API.</p>
+            <p class="state-title">Reviewing</p>
+            <p id="loading-copy" class="muted">Running deterministic policy checks through the local API.</p>
+            <div id="loading-trace" class="processing-trace"></div>
           </div>
           <div id="status-error" class="state-block state-error"></div>
           <div id="result-content" class="result-content"></div>
@@ -110,7 +150,7 @@
       </main>
 
       <footer class="legal-note">
-        AdLint is decision-support software, not legal advice. It does not guarantee platform approval or make definitive statutory violation determinations. Raw submissions are not persisted by default; this UI sends the form to the local <code>/analyze</code> API and does not add storage or history.
+        AdLint is decision-support software, not legal advice. It does not guarantee platform approval or make definitive statutory determinations. This UI sends the current form to the local <code>/analyze</code> API and does not add storage or history.
       </footer>
     </div>
 

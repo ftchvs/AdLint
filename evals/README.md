@@ -8,6 +8,10 @@ platform approval.
 
 - `datasets/seed_ads.jsonl`: 50-example smoke set.
 - `datasets/rule_benchmark_v1.jsonl`: 200-example deterministic benchmark.
+- `datasets/real_cases_v1.jsonl`: 13 public-source, paraphrased real-case
+  diagnostics. These rows are source-backed examples from FTC, ASA/CAP, and
+  DOJ/HUD-style public actions or rulings, rewritten as deterministic local
+  inputs. They are not a statistically reliable benchmark.
 
 Regenerate `rule_benchmark_v1.jsonl`:
 
@@ -27,8 +31,36 @@ Compare rule-only, model-only, and hybrid modes:
 make model-benchmark
 ```
 
+Run a short required-model smoke check against the configured local model:
+
+```bash
+make model-smoke
+```
+
+This target uses the first three seed rows with `--require-model` and
+`--min-decision-accuracy 0`. It checks runtime availability and structured
+model responses, not full benchmark quality.
+
 If no requested local model is installed, model-only rows are skipped and
 hybrid rows keep the rule-only decision with model status metadata.
+
+Validate and run the real-case diagnostic set:
+
+```bash
+make real-cases
+```
+
+Compare rule-only, model-only, and hybrid behavior on the same real-case rows:
+
+```bash
+make real-cases-hybrid
+```
+
+`real-cases` and `real-cases-hybrid` intentionally use
+`--min-decision-accuracy 0` because this dataset is diagnostic. Its value is in
+the row-level false-positive and false-negative notes, not in a pass/fail gate.
+The initial set is also all high-risk by construction, so decision accuracy is
+not a reliability estimate.
 
 ## Row Schema
 
@@ -46,6 +78,16 @@ Optional fields:
 - Metadata fields such as `coverage_tags`, `label_basis`, or
   `label_rationale` may be added later. The runner ignores unknown fields.
 
+Real-case rows are stricter. `evals/validate_real_cases.py` requires source and
+label metadata:
+
+- `source_type`, `source_org`, `source_url`, and `source_title`.
+- `label_basis` and `label_confidence`.
+- No live `landing_page_url` inside `input`; use deterministic
+  `landing_page_html` or text fields instead.
+
+See `evals/real_cases.md` for the real-case collection protocol.
+
 ## Labeling Rules
 
 - Labels should describe deterministic preflight-review expectations, not legal
@@ -56,3 +98,4 @@ Optional fields:
 - Use false-positive and false-negative review notes to document rule behavior
   that needs human review.
 - Do not claim model quality from rule-only benchmark results.
+- Keep synthetic regression benchmarks separate from real-case diagnostics.
