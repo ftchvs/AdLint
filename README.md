@@ -38,6 +38,8 @@ platform approval or make definitive statutory violation determinations.
   fetchable HTML URLs.
 - Verified live Ollama model quality or fine-tuning. An opt-in Ollama client is
   present, but deterministic rules are the baseline.
+- Image creative vision analysis for banners, social images, thumbnails, or
+  other visual assets. The PRD treats this as a future opt-in layer.
 
 ## Quick start
 
