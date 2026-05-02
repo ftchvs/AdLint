@@ -77,7 +77,9 @@ def test_report_writer_outputs_json_and_markdown(tmp_path) -> None:
     assert json_report.exists()
     assert markdown_report.exists()
     assert json.loads(json_report.read_text(encoding="utf-8"))["decision"] == result.decision
-    assert "Decision-Support Disclaimer" in markdown_report.read_text(encoding="utf-8")
+    markdown = markdown_report.read_text(encoding="utf-8")
+    assert "- Model status: `disabled`" in markdown
+    assert "Decision-Support Disclaimer" in markdown
 
 
 def test_logging_is_opt_in(tmp_path) -> None:
@@ -115,3 +117,118 @@ def test_logging_stays_disabled_without_opt_in(tmp_path, monkeypatch) -> None:
     assert result.logging_enabled is False
     assert result.reports == {}
     assert not (tmp_path / "logs" / "adlint-runs.jsonl").exists()
+
+
+def test_ollama_model_without_model_enabled_does_not_call_classifier(monkeypatch) -> None:
+    def fail_classifier(*args, **kwargs):  # pragma: no cover - must not be called
+        raise AssertionError("classifier should only run when model_enabled is true")
+
+    monkeypatch.setattr("adlint.engine.classify_with_ollama", fail_classifier)
+
+    result = analyze(
+        {
+            "platform": "google",
+            "industry": "general",
+            "headline": "Download campaign checklist",
+            "body": "A free worksheet for launch planning.",
+            "cta": "Download",
+            "model_enabled": False,
+        },
+        ollama_model="llama3.2:latest",
+    )
+
+    assert result.model == {"enabled": False, "provider": None, "status": "disabled"}
+
+
+def test_clinically_backed_health_claim_requires_substantiation_review() -> None:
+    result = analyze(
+        {
+            "platform": "google",
+            "industry": "health",
+            "headline": "Clinically backed weight loss pen treatment",
+            "body": "Access once-weekly prescription weight loss treatment after an online clinic appointment.",
+            "cta": "Start consultation",
+        }
+    )
+
+    assert "unsupported_health_claim" in policy_ids(result)
+
+
+def test_generic_clinical_operations_copy_does_not_create_health_claim_review() -> None:
+    result = analyze(
+        {
+            "platform": "linkedin",
+            "industry": "health",
+            "headline": "Clinical workflow software",
+            "body": "Coordinate provider approvals and appointment notes.",
+            "cta": "Request demo",
+        }
+    )
+
+    assert "unsupported_health_claim" not in policy_ids(result)
+    assert "hipaa_marketing_review" in policy_ids(result)
+
+
+def test_hipaa_marketing_review_requires_patient_or_data_context() -> None:
+    result = analyze(
+        {
+            "platform": "google",
+            "industry": "health",
+            "headline": "Weekly weight loss injection appointments",
+            "body": "Medical clinic appointment for prescription weight loss treatment.",
+            "cta": "Start consultation",
+        }
+    )
+
+    assert "google_health_restricted_category" in policy_ids(result)
+    assert "hipaa_marketing_review" not in policy_ids(result)
+
+
+def test_hipaa_tracking_review_requires_healthcare_context_beside_tracker() -> None:
+    fertility_app = analyze(
+        {
+            "platform": "google",
+            "industry": "health",
+            "headline": "Fertility health app reminders",
+            "body": "Sync your data and reproductive health insights.",
+            "cta": "Sync your data",
+            "landing_page_html": "<html><script src='https://www.googletagmanager.com/gtm.js'></script><body><h1>Reproductive health reminders</h1></body></html>",
+        }
+    )
+    telehealth_intake = analyze(
+        {
+            "platform": "tiktok",
+            "industry": "health",
+            "headline": "ADHD telehealth treatment appointment",
+            "body": "Optimize ads from completed intake forms for patients seeking medical treatment.",
+            "cta": "Book appointment",
+            "landing_page_html": "<html><script src='https://analytics.tiktok.com/i18n/pixel/events.js'></script><body><h1>Clinic appointment</h1><form><label>Intake form</label></form></body></html>",
+        }
+    )
+
+    assert "hipaa_tracking_technology_review" not in policy_ids(fertility_app)
+    assert "hipaa_tracking_technology_review" in policy_ids(telehealth_intake)
+
+
+def test_health_breach_indicator_requires_app_device_or_consumer_health_context() -> None:
+    health_data_only = analyze(
+        {
+            "platform": "tiktok",
+            "industry": "health",
+            "headline": "Online therapy matched to your symptoms",
+            "body": "Use health data from a mental health quiz to personalize therapy subscription ads.",
+            "cta": "Take quiz",
+        }
+    )
+    health_app = analyze(
+        {
+            "platform": "google",
+            "industry": "health",
+            "headline": "Health app prescription discounts",
+            "body": "Use health data to retarget prescription savings reminders.",
+            "cta": "Get coupon",
+        }
+    )
+
+    assert "ftc_health_breach_notification_indicator" not in policy_ids(health_data_only)
+    assert "ftc_health_breach_notification_indicator" in policy_ids(health_app)

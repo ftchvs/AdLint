@@ -1,0 +1,541 @@
+\documentclass[11pt]{article}
+
+\usepackage[
+  letterpaper,
+  top=0.85in,
+  bottom=0.88in,
+  left=1.2in,
+  right=1.2in,
+  headsep=18pt
+]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{newpxtext}
+\usepackage{newpxmath}
+\usepackage[scale=0.94]{tgheros}
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\usepackage[table]{xcolor}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{placeins}
+\usepackage[
+  font={small,sf},
+  labelfont={bf},
+  labelsep=period,
+  justification=raggedright,
+  singlelinecheck=false
+]{caption}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric}
+
+\definecolor{adlintink}{HTML}{111827}
+\definecolor{adlintmuted}{HTML}{4B5563}
+\definecolor{adlintline}{HTML}{D1D5DB}
+\definecolor{adlintsoft}{HTML}{F6F8FA}
+\definecolor{adlintnavy}{HTML}{0F172A}
+\definecolor{oiBlue}{HTML}{0072B2}
+\definecolor{oiSky}{HTML}{56B4E9}
+\definecolor{oiGreen}{HTML}{009E73}
+\definecolor{oiOrange}{HTML}{E69F00}
+\definecolor{oiVermillion}{HTML}{D55E00}
+\definecolor{oiPurple}{HTML}{CC79A7}
+
+\AtBeginDocument{\color{adlintink}}
+\setlength{\headheight}{14pt}
+\setstretch{1.08}
+\setlength{\emergencystretch}{2em}
+\setlength{\parindent}{1.15em}
+\setlength{\parskip}{0pt}
+\renewcommand{\arraystretch}{1.15}
+\setlist{topsep=0.35em,itemsep=0.2em,parsep=0pt,leftmargin=1.3em}
+\captionsetup{skip=0.45em}
+\captionsetup[table]{position=top,justification=centering,singlelinecheck=true}
+
+\hypersetup{
+  pdftitle={AdLint Hybrid Evaluation},
+  pdfauthor={AdLint Contributors},
+  pdfsubject={Rules-backed local model evaluation for ad compliance review}
+}
+
+\titleformat{\section}
+  {\sffamily\Large\bfseries\color{adlintnavy}}
+  {\thesection}{0.65em}{}
+\titleformat{\subsection}
+  {\sffamily\large\bfseries\color{adlintnavy}}
+  {\thesubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{1.55em}{0.55em}
+\titlespacing*{\subsection}{0pt}{1.05em}{0.35em}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\sffamily\footnotesize\color{adlintmuted}AdLint Hybrid Evaluation}
+\fancyhead[R]{\sffamily\footnotesize\color{adlintmuted}May 2026}
+\fancyfoot[C]{\sffamily\footnotesize\color{adlintmuted}\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{adlintline}\leaders\hrule height \headrulewidth\hfill}}
+\renewcommand{\footrulewidth}{0pt}
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \fancyfoot[C]{\sffamily\footnotesize\color{adlintmuted}\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+\pgfplotsset{
+  every axis/.append style={
+    font=\sffamily\small,
+    axis line style={adlintline},
+    tick style={adlintline},
+    tick label style={font=\sffamily\footnotesize\color{adlintmuted}},
+    label style={font=\sffamily\small\color{adlintmuted}},
+    ymajorgrids=true,
+    grid style={adlintline!60},
+    major grid style={adlintline!60},
+    every axis plot/.append style={line width=0.7pt}
+  }
+}
+
+\newcommand{\papertitle}{AdLint Hybrid Evaluation}
+\newcommand{\papersubtitle}{Rules as the Backbone, Local Models as Additive Review}
+\newcommand{\metricnote}[1]{\textcolor{adlintmuted}{\sffamily\footnotesize #1}}
+
+\begin{document}
+\thispagestyle{plain}
+\vspace*{-0.25in}
+
+\begin{center}
+  {\sffamily\bfseries\fontsize{22}{27}\selectfont\color{adlintnavy}\papertitle\par}
+  \vspace{0.35em}
+  {\sffamily\Large\color{adlintmuted}\papersubtitle\par}
+  \vspace{0.85em}
+  {\sffamily\small\color{adlintmuted}AdLint Contributors \quad|\quad May 2026}
+\end{center}
+
+\vspace{0.85em}
+\noindent\begin{minipage}{\linewidth}
+{\sffamily\bfseries\small\color{adlintnavy}Abstract}\par
+\vspace{0.3em}
+AdLint is a local-first preflight system for ad, landing-page, privacy, and
+brand-safety review. This paper reports the current evaluation evidence for a
+hybrid architecture in which deterministic policy-as-code rules remain the
+decision backbone and a local Ollama model contributes additive review signal.
+On a 200-example synthetic rule benchmark, rules reached 1.000 decision
+accuracy with zero policy false-positive or false-negative review notes. On a
+real local-model smoke run over three seed rows, the
+configured model returned status \texttt{ok} for all model-required calls.
+Model-only accuracy was 0.667, while hybrid accuracy remained 1.000 and added
+three review-only model findings. The result supports delaying fine-tuning and
+prioritizing measurement of where the local model adds, rescues, or harms the
+deterministic baseline.
+A 13-row public-source real-case diagnostic set adds sourced FTC, ASA/CAP, and
+DOJ/HUD-style cases. It is not yet a reliability benchmark, but its initial
+policy-level notes have now been adjudicated into corrected labels and tighter
+rules.
+\end{minipage}
+
+\section{Recommendation}
+
+AdLint should focus on a hybrid policy engine rather than a model-only
+classifier. The operational rule is simple:
+
+\begin{quote}
+\sffamily\small
+\textbf{Rules make auditable launch decisions.} The local model adds semantic
+review, rewrite assistance, and edge-case evidence, but does not replace
+deterministic policy checks.
+\end{quote}
+
+This framing has three advantages. First, every blocking or review decision can
+trace to policy identifiers, evidence spans, severity, and recommended actions.
+Second, the rule path can be regression-tested quickly and reproducibly. Third,
+the local model can still provide private, offline reasoning where it is
+valuable: ambiguous claims, landing-page context, rewrite suggestions, and
+human-readable summaries.
+
+\section{System Design}
+
+Figure~\ref{fig:architecture} shows the intended architecture. Rules remain on
+the critical path. The model runs as an additive reviewer whose output is
+merged into the report, then measured against the rule-only baseline.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  font=\sffamily\small,
+  node distance=1.05cm and 0.62cm,
+  flowbox/.style={
+    draw=adlintline,
+    fill=adlintsoft,
+    rounded corners=2pt,
+    align=center,
+    minimum width=2.9cm,
+    minimum height=1.05cm,
+    inner sep=5pt
+  },
+  rule/.style={flowbox, draw=oiBlue, fill=oiBlue!7},
+  model/.style={flowbox, draw=oiOrange, fill=oiOrange!9},
+  report/.style={flowbox, draw=oiGreen, fill=oiGreen!8},
+  eval/.style={flowbox, draw=oiPurple, fill=oiPurple!8},
+  arrow/.style={-{Latex[length=2.1mm]}, line width=0.75pt, draw=adlintmuted}
+]
+\node[rule] (input) {Ad copy\\Landing-page context};
+\node[rule, right=of input] (rules) {Policy-as-code\\\metricnote{decision backbone}};
+\node[model, below=of rules] (model) {Local model\\\metricnote{semantic reviewer}};
+\node[report, right=of rules] (merge) {Hybrid merge\\\metricnote{deduped findings}};
+\node[report, right=of merge] (report) {Decision report\\\metricnote{evidence and rewrites}};
+\node[eval, below=of merge] (eval) {Hybrid-value eval\\\metricnote{adds vs. hurts}};
+
+\draw[arrow] (input) -- (rules);
+\draw[arrow] (input.south) |- (model.west);
+\draw[arrow] (rules) -- (merge);
+\draw[arrow] (model.east) -| (merge.south);
+\draw[arrow] (merge) -- (report);
+\draw[arrow] (merge.south) -- (eval.north);
+\draw[arrow] (rules.south east) to[out=-35,in=140] (eval.north west);
+\draw[arrow] (model.east) -- (eval.west);
+\end{tikzpicture}
+\caption{Hybrid review architecture. Rules stay on the decision path; the local
+model adds review signal and is evaluated for incremental value.}
+\label{fig:architecture}
+\end{figure}
+
+\section{Evaluation Method}
+
+The evaluation now has three layers:
+
+\begin{enumerate}
+  \item A 200-example deterministic benchmark,
+  \texttt{rule\_benchmark\_v1.jsonl}, used for fast policy-engine regression
+  testing.
+  \item A required local-model smoke run, \texttt{make model-smoke}, used to
+  prove Ollama availability and quantify early hybrid impact on a small subset.
+  \item A 13-example real-case diagnostic set,
+  \texttt{real\_cases\_v1.jsonl}, derived from public FTC, ASA/CAP, and
+  DOJ/HUD-style cases and stored as paraphrased deterministic rows with source
+  metadata.
+\end{enumerate}
+
+The all-modes runner compares rule-only, model-only, and hybrid outputs. The
+new hybrid-value section measures decision improvements, regressions, model
+availability, model-only undercalls, model-added findings, model-added
+false-positive policy hits, and model-rescued policy false negatives.
+
+\section{Results}
+
+\subsection{Rule Benchmark}
+
+Table~\ref{tab:rule-benchmark} summarizes the 200-example deterministic
+benchmark. The decision confusion matrix is diagonal: no approved,
+needs-review, or high-risk decisions were misclassified in this synthetic
+benchmark.
+
+\begin{table}[!htbp]
+\centering
+\caption{Rule-only benchmark summary.}
+\label{tab:rule-benchmark}
+\small
+\begin{tabularx}{0.74\linewidth}{@{}Xr@{}}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Examples & 200 \\
+Decision accuracy & 1.000 \\
+Decision mismatches & 0 \\
+Policy false-positive review notes & 0 \\
+Policy false-negative review notes & 0 \\
+Approved labels & 51 \\
+Needs-review labels & 50 \\
+High-risk labels & 99 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The 1.000 result is best read as internal regression evidence. If the 200 rows
+were a representative random sample, 200/200 correct decisions would imply an
+approximate 95\% Wilson lower bound of 0.981; they are not random, so the
+statistic should not be used as a production reliability claim.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  xbar,
+  width=0.82\linewidth,
+  height=4.2cm,
+  xlabel={Rows},
+  symbolic y coords={High risk,Needs review,Approved},
+  ytick=data,
+  xmin=0,
+  xmax=120,
+  nodes near coords,
+  nodes near coords style={font=\sffamily\footnotesize\color{adlintnavy}},
+  bar width=12pt,
+  enlarge y limits=0.32,
+  xmajorgrids=true,
+  ymajorgrids=false,
+  axis x line*=bottom,
+  axis y line*=left
+]
+\addplot[fill=oiBlue!70, draw=oiBlue] coordinates {
+  (99,High risk)
+  (50,Needs review)
+  (51,Approved)
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Decision-label distribution in the 200-example rule benchmark.}
+\label{fig:decision-distribution}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.82\linewidth,
+  height=4.9cm,
+  xlabel={Precision},
+  xmin=0.94,
+  xmax=1.02,
+  symbolic y coords={Privacy,Platform,Landing,Health,Disclosure,Brand safety},
+  ytick=data,
+  xtick={0.85,0.90,0.95,1.00},
+  xmajorgrids=true,
+  ymajorgrids=false,
+  axis x line*=bottom,
+  axis y line*=left,
+  nodes near coords,
+  every node near coord/.append style={
+    font=\sffamily\footnotesize\color{adlintnavy},
+    anchor=west
+  },
+  point meta=explicit symbolic
+]
+\addplot[
+  only marks,
+  mark=*,
+  mark size=2.7pt,
+  draw=oiGreen,
+  fill=oiGreen
+] coordinates {
+  (1.000,Privacy) [1.000]
+  (1.000,Platform) [1.000]
+  (1.000,Landing) [1.000]
+  (1.000,Health) [1.000]
+  (1.000,Disclosure) [1.000]
+  (1.000,Brand safety) [1.000]
+};
+\draw[densely dotted, draw=adlintline] (axis cs:1.000,Privacy) -- (axis cs:1.000,Brand safety);
+\end{axis}
+\end{tikzpicture}
+\caption{Category-level precision for selected benchmark categories after
+label adjudication. Recall was 1.000 for all categories shown.}
+\label{fig:category-precision}
+\end{figure}
+
+\subsection{Real-case Diagnostics}
+
+Table~\ref{tab:real-cases} summarizes the adjudicated public-source diagnostic
+run.
+These rows are deliberately high-risk and hand selected, so the decision
+accuracy is not a real-world reliability estimate. The useful signal is that
+the initial policy-level review queue has been resolved into tighter rules and
+corrected expected labels.
+
+\begin{table}[!htbp]
+\centering
+\caption{Public-source real-case diagnostic summary.}
+\label{tab:real-cases}
+\small
+\begin{tabularx}{0.82\linewidth}{@{}Xr@{}}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Examples & 13 \\
+Expected high-risk rows & 13 \\
+Decision accuracy & 1.000 \\
+Decision mismatches & 0 \\
+Policy false-negative review notes & 0 \\
+Policy false-positive review notes & 0 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+For scale, 13/13 correct decisions would imply only an approximate 95\% Wilson
+lower bound of 0.772 under a representative random-sample assumption. Because
+these rows are hand selected and all high-risk, that interval is illustrative
+only.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  ybar,
+  width=0.76\linewidth,
+  height=4.3cm,
+  ylabel={Review notes},
+  symbolic x coords={Initial FN,Initial FP,Current FN,Current FP},
+  xtick=data,
+  ymin=0,
+  ymax=12.5,
+  nodes near coords,
+  nodes near coords style={font=\sffamily\footnotesize\color{adlintnavy}},
+  bar width=18pt,
+  enlarge x limits=0.32,
+  ymajorgrids=true,
+  axis x line*=bottom,
+  axis y line*=left
+]
+\addplot[fill=oiOrange!75, draw=oiOrange] coordinates {
+  (Initial FN,2)
+  (Initial FP,11)
+  (Current FN,0)
+  (Current FP,0)
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Real-case policy-level review notes before and after adjudication.}
+\label{fig:real-case-notes}
+\end{figure}
+
+\subsection{Local Model Smoke}
+
+Table~\ref{tab:model-smoke} reports the latest real Ollama smoke run. It is a
+runtime and early-quality check, not a full model benchmark. It proves that the
+configured local model is available, while showing that model-only decisions
+are still weaker than rule-backed decisions.
+
+\begin{table}[!htbp]
+\centering
+\caption{Real local-model smoke results on three seed rows.}
+\label{tab:model-smoke}
+\small
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Mode} & \textbf{Scored rows} & \textbf{Decision accuracy} & \textbf{Model status} \\
+\midrule
+Rule-only & 3 & 1.000 & \texttt{disabled: 3} \\
+Model-only & 3 & 0.667 & \texttt{ok: 3} \\
+Hybrid & 3 & 1.000 & \texttt{ok: 3} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  ybar,
+  width=0.68\linewidth,
+  height=4.6cm,
+  ylabel={Decision accuracy},
+  symbolic x coords={Rule-only,Model-only,Hybrid},
+  xtick=data,
+  ymin=0,
+  ymax=1.1,
+  nodes near coords,
+  nodes near coords style={font=\sffamily\footnotesize\color{adlintnavy}},
+  bar width=16pt,
+  enlarge x limits=0.24,
+  ymajorgrids=true,
+  axis x line*=bottom,
+  axis y line*=left
+]
+\addplot[fill=oiBlue!70, draw=oiBlue] coordinates {
+  (Rule-only,1.000)
+  (Model-only,0.667)
+  (Hybrid,1.000)
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Decision accuracy by mode in the local-model smoke run.}
+\label{fig:smoke-accuracy}
+\end{figure}
+
+\subsection{Hybrid Value Metrics}
+
+The new \texttt{hybrid\_value} block quantifies whether the model helps or
+hurts the hybrid path. Table~\ref{tab:hybrid-value} shows the current smoke
+results.
+
+\begin{table}[!htbp]
+\centering
+\caption{Hybrid value metrics from the latest real-model smoke run.}
+\label{tab:hybrid-value}
+\small
+\begin{tabularx}{0.82\linewidth}{@{}Xr@{}}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Comparable rows & 3 \\
+Model OK rows & 3 \\
+Model unavailable rows & 0 \\
+Hybrid minus rule accuracy delta & 0.000 \\
+Decision improvements & 0 \\
+Decision regressions & 0 \\
+Model-only undercalls & 1 \\
+Rows with model-added findings & 3 \\
+Model-added expected policy hits & 0 \\
+Model-added false-positive policy hits & 3 \\
+Model-rescued policy false negatives & 0 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\FloatBarrier
+
+\section{Interpretation}
+
+The current data supports four product choices.
+
+\begin{enumerate}
+  \item Keep rules as the decision backbone. They are auditable, fast, and
+  currently have the strongest measured behavior.
+  \item Use the local model where it adds value: semantic concern summaries,
+  landing-page context review, and rewrite assistance.
+  \item Quantify the local model continuously. The model currently adds review
+  findings but has not yet rescued missed policy ids in the smoke subset.
+  \item Delay fine-tuning. The measured bottleneck is not a lack of adapter
+  training; it is the need for more reviewed examples and clearer model-value
+  labels.
+  \item Grow real cases before claiming reliability. The new public-source set
+  is useful for finding failures, but it is too small and too high-risk-heavy
+  to support population-level rates.
+\end{enumerate}
+
+\section{Limitations}
+
+The 200-example rule benchmark is synthetic and policy-author authored. It is
+useful for regression coverage, not for claiming platform approval or legal
+compliance. The real local-model smoke run has only three rows and should be
+expanded before making model-quality claims. The 13-row real-case diagnostic
+set is sourced, but it is still hand selected and currently contains only
+high-risk rows. Current labels do not treat \texttt{model\_policy\_review} as
+an expected policy id, so model-added review notes appear as false-positive
+policy hits even when they may be useful for human review.
+
+\section{Next Work}
+
+The highest-value next implementation is not fine-tuning. It is a stronger
+hybrid eval set with human-reviewed labels for model-added value:
+
+\begin{itemize}
+  \item Add rows where rules intentionally miss semantic or landing-page risk.
+  \item Label whether \texttt{model\_policy\_review} is useful, noisy, or
+  harmful.
+  \item Track model-caused review burden separately from true policy false
+  positives.
+  \item Expand sourced real cases to 50--100 rows with approved, needs-review,
+  and high-risk examples before using percentages as reliability evidence.
+  \item Only consider LoRA or adapter training after this hybrid baseline shows
+  stable gaps that prompting and policy design cannot solve.
+\end{itemize}
+
+\end{document}

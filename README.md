@@ -14,32 +14,33 @@ platform approval or make definitive statutory violation determinations.
 ## What runs today
 
 - Python package with the `adlint scan` CLI.
-- FastAPI app with `GET /health`, `POST /analyze`, and `POST /eval`.
-- One-page Web UI at `/ui/` for the main local review workflow.
+- FastAPI app with `GET /health`, `GET /models`, `POST /analyze`, and
+  `POST /eval`.
+- One-page Web UI at `/ui/` for the main local review workflow, including
+  model selection and a Local model toggle that defaults on.
 - YAML policy files under `adlint/policies/`, plus custom policy paths.
 - Deterministic rule engine with policy-module, platform, and industry filters.
 - Transparent score thresholds for `approved`, `needs_review`, and `high_risk`.
 - JSON stdout, Markdown stdout, and paired JSON/Markdown report files.
 - Safer rewrite suggestions for high-risk and review-required findings.
 - Opt-in JSONL run logging for local evaluation workflows.
-- Seed eval runner with 50 curated examples.
+- Seed, benchmark, and public-source real-case eval runners.
 - Tests covering the CLI, API, policy loading, reports, documented examples,
   eval runner, and opt-in logging behavior.
 - Makefile and Docker Compose paths for local development.
 
 ## Not in this MVP yet
 
-- A larger 200-500 example benchmark.
+- A statistically reliable real-case benchmark; the current public-source set
+  is diagnostic and intentionally small.
 - `scoring.yml` configurability; scoring weights currently live in Python.
 - SQLite or other durable storage; raw submissions are not persisted by
   default.
 - Playwright or trafilatura extraction. The current landing-page extractor is
   a small stdlib HTML parser that can read inline HTML, local files, or
   fetchable HTML URLs.
-- Verified live Ollama model quality or fine-tuning. An opt-in Ollama client is
-  present, but deterministic rules are the baseline.
-- Image creative vision analysis for banners, social images, thumbnails, or
-  other visual assets. The PRD treats this as a future opt-in layer.
+- Verified live Ollama model quality or fine-tuning. Local model support is
+  available for decision support, but deterministic rules are the baseline.
 
 ## Quick start
 
@@ -66,6 +67,8 @@ make dev   # install and run the high-risk example, writing reports/
 make scan  # install and run the wellness example
 make api   # start uvicorn with adlint.api:app
 make eval  # run the seed evals and write evals/results/latest.json
+make benchmark    # run the 200-row synthetic policy regression benchmark
+make real-cases   # run sourced public-case diagnostics
 make test  # run pytest
 ```
 
@@ -107,7 +110,7 @@ Example config:
 ```
 
 Optional input fields include `target_age_range`, `landing_page_url`,
-`model_enabled`, `logging_enabled`, and `log_path`.
+`model_enabled`, `ollama_model`, `logging_enabled`, and `log_path`.
 
 ## API
 
@@ -126,10 +129,18 @@ http://127.0.0.1:8000/ui/
 Endpoints:
 
 - `GET /health` returns service status.
+- `GET /models` returns local model configuration and available model choices
+  for the Web UI.
 - `POST /analyze` accepts the same payload shape as the CLI config and returns
   the full analysis result.
 - `POST /eval` accepts `{"examples": [...]}` where each example can include an
   `input` object and optional `expected_decision`.
+
+The Web UI sends `model_enabled: true` by default unless the user turns off the
+Local model toggle. It also sends `ollama_model` when a specific model is
+selected. API callers can omit `model_enabled` or set it to `false` for a
+rule-only run, or set `ollama_model` to override `ADLINT_OLLAMA_MODEL` for that
+request.
 
 Minimal request:
 
@@ -214,6 +225,24 @@ The seed dataset has 50 examples across health, wellness, finance, SaaS,
 creator disclosure, privacy, landing-page mismatch, and brand-safety cases. It
 is a development sanity check, not a production benchmark.
 
+Run the larger deterministic benchmark:
+
+```bash
+make benchmark
+```
+
+Run the public-source real-case diagnostics:
+
+```bash
+make real-cases
+```
+
+`real_cases_v1` contains 13 paraphrased, source-backed rows from public FTC,
+ASA/CAP, and DOJ/HUD-style cases. It is intentionally diagnostic: all current
+rows are high-risk, so decision accuracy is not a reliability estimate. Use the
+policy false-positive and false-negative notes to decide what rules, labels, or
+model-rescue behavior to improve next.
+
 Raw submissions are not persisted by default. To opt into JSONL logging, set:
 
 ```json
@@ -225,13 +254,20 @@ Raw submissions are not persisted by default. To opt into JSONL logging, set:
 
 ## Local model hook
 
-Rules run without a model. To add an Ollama-compatible classifier:
+AdLint uses hybrid analysis when local model review is enabled: deterministic
+rules always run, and the local Ollama-compatible model adds decision-support
+metadata. The Web UI enables this by default; CLI users can pass
+`--enable-model`, and API callers can set `model_enabled: true`.
 
 ```bash
-ollama pull gpt-oss-safeguard-20b
-ADLINT_OLLAMA_MODEL=gpt-oss-safeguard-20b \
+ollama pull gpt-oss-safeguard:20b
+ADLINT_OLLAMA_MODEL=gpt-oss-safeguard:20b \
   adlint scan examples/high_risk_tiktok_health.json --enable-model
 ```
+
+The default Ollama endpoint is `http://localhost:11434/api/chat`. Set
+`ADLINT_OLLAMA_URL` to point AdLint at a different Ollama-compatible chat
+endpoint.
 
 If the model endpoint is unavailable, AdLint still returns rule-based findings
 and marks the model status as `unavailable`.
@@ -242,6 +278,8 @@ and marks the model status as `unavailable`.
 - `docs/legal_disclaimer.md`
 - `docs/local_models.md`
 - `docs/eval_report.md`
+- `docs/research_paper.md`
+- `docs/adlint_hybrid_eval_paper.tex`
 
 ## Non-goals
 

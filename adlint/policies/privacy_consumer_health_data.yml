@@ -11,7 +11,7 @@ policies:
       - connected device
       - wearable
       - sync your data
-      - health data
+      - consumer health data
     recommended_action: Review health-data collection, disclosure, and breach-notification obligations.
     rewrite_strategy: add_review_reminder
 
