@@ -85,6 +85,8 @@ class LandingPageSnapshot:
             fields[f"landing_page_heading_{index}"] = value
         for index, value in enumerate(self.visible_claims, start=1):
             fields[f"landing_page_claim_{index}"] = value
+        for index, value in enumerate(self.forms, start=1):
+            fields[f"landing_page_form_{index}"] = value
         for index, value in enumerate(self.pricing_text, start=1):
             fields[f"landing_page_pricing_{index}"] = value
         for index, value in enumerate(self.disclaimers, start=1):

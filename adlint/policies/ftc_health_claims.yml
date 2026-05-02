@@ -8,8 +8,7 @@ policies:
     signals:
       - clinically proven
       - doctor recommended
-      - science-backed
-      - backed by science
+      - clinical
       - medical breakthrough
     model_prompt: >
       Determine whether this ad makes a health-related claim that would likely
@@ -47,6 +46,7 @@ policies:
       - burn fat
       - belly fat
       - weight loss
+      - lose weight
       - body transformation
     recommended_action: Avoid absolute body or fat-loss language and route for review.
     rewrite_strategy: wellness_support
@@ -56,7 +56,6 @@ policies:
     category: health_claims
     description: Medical cure, treatment, or diagnosis claims need formal review.
     modules: [health_claims]
-    industries: [health, wellness]
     signals:
       - cure
       - treats
@@ -66,6 +65,19 @@ policies:
       - prevents disease
     recommended_action: Remove disease-treatment language unless reviewed and substantiated.
     rewrite_strategy: remove_medical_language
+
+  - id: wellness_claim_review
+    severity: medium
+    category: health_claims
+    description: Wellness claim uses evidence framing that should be checked for substantiation.
+    modules: [health_claims]
+    industries: [health, wellness]
+    signals:
+      - science-backed
+      - backed by science
+      - evidence-based
+    recommended_action: Clarify what evidence supports the wellness claim.
+    rewrite_strategy: qualify_claim
 
   - id: before_after_claim
     severity: medium

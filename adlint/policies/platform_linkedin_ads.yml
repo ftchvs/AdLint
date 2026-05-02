@@ -7,6 +7,8 @@ policies:
     platforms: [linkedin]
     signals:
       - age
+      - young professionals only
+      - recent graduates only
       - disability
       - medical condition
       - pregnancy
@@ -21,7 +23,7 @@ policies:
     description: Employment, housing, and credit ads should avoid exclusionary language.
     modules: [platform]
     platforms: [linkedin]
-    industries: [finance, general]
+    industries: [finance, saas, general]
     signals:
       - young professionals only
       - recent graduates only
@@ -31,7 +33,7 @@ policies:
     rewrite_strategy: neutral_targeting
 
   - id: linkedin_professional_claim_review
-    severity: medium
+    severity: high
     category: platform_policy
     description: Professional performance or income promises should be qualified.
     modules: [platform]

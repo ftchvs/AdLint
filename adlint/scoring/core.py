@@ -25,18 +25,18 @@ def score_hits(hits: list[PolicyHit], submission: Submission) -> float:
     privacy_weight = 0.1 if any(hit.category == "privacy" for hit in hits) else 0.0
     brand_safety_weight = 0.05 if any(hit.category == "brand_safety" for hit in hits) else 0.0
 
-    return round(
-        min(
-            1.0,
-            max_severity
-            + evidence_weight
-            + regulated_weight
-            + mismatch_weight
-            + privacy_weight
-            + brand_safety_weight,
-        ),
-        2,
+    raw_score = min(
+        1.0,
+        max_severity
+        + evidence_weight
+        + regulated_weight
+        + mismatch_weight
+        + privacy_weight
+        + brand_safety_weight,
     )
+    if max_severity < SEVERITY_WEIGHTS["high"]:
+        raw_score = min(raw_score, 0.69)
+    return round(raw_score, 2)
 
 
 def decision_for_score(score: float) -> str:

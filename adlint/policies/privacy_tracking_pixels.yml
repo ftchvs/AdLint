@@ -17,7 +17,7 @@ policies:
     rewrite_strategy: add_review_reminder
 
   - id: health_form_tracking_risk
-    severity: high
+    severity: medium
     category: privacy
     description: Health forms paired with trackers can create elevated privacy-review risk.
     modules: [privacy]

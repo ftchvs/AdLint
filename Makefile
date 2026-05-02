@@ -1,13 +1,23 @@
-.PHONY: dev scan eval test
+PYTHON ?= python3
+VENV := .venv
+BIN := $(VENV)/bin
 
-dev:
-	python -m adlint scan examples/high_risk_tiktok_health.json --output-dir reports
+.PHONY: dev scan eval test install
 
-scan:
-	python -m adlint scan examples/needs_review_google_wellness.json
+install: $(BIN)/python
 
-eval:
-	python evals/run_eval.py evals/datasets/seed_ads.jsonl --output evals/results/latest.json
+$(BIN)/python: pyproject.toml
+	$(PYTHON) -m venv $(VENV)
+	$(BIN)/python -m pip install -e ".[dev]"
 
-test:
-	python -m pytest
+dev: $(BIN)/python
+	$(BIN)/python -m adlint scan examples/high_risk_tiktok_health.json --output-dir reports
+
+scan: $(BIN)/python
+	$(BIN)/python -m adlint scan examples/needs_review_google_wellness.json
+
+eval: $(BIN)/python
+	$(BIN)/python evals/run_eval.py evals/datasets/seed_ads.jsonl --output evals/results/latest.json
+
+test: $(BIN)/python
+	$(BIN)/python -m pytest

@@ -22,13 +22,15 @@ policies:
     category: privacy
     description: Health context combined with tracking technology may require privacy review.
     modules: [privacy]
-    industries: [health, wellness]
+    industries: [health]
     requires_review: true
     signals:
       - meta pixel
       - facebook pixel
       - google tag manager
+      - google analytics
       - gtag
+      - tiktok pixel
       - conversion event
       - client id
     recommended_action: Review consent, tracking configuration, and business-associate requirements.

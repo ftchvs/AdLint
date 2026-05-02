@@ -1,0 +1,47 @@
+# Policy Design
+
+AdLint policies live in version-controlled YAML under `adlint/policies/`.
+Each file contains a `policies` list. A policy maps simple deterministic
+signals to a policy ID, severity, category, recommended action, optional
+module/platform/industry filters, and optional IAB-style suitability metadata.
+
+Minimal policy shape:
+
+```yaml
+policies:
+  - id: unsupported_health_claim
+    severity: high
+    category: health_claims
+    modules: [health_claims]
+    industries: [health, wellness]
+    signals:
+      - clinically proven
+      - guaranteed
+    recommended_action: Remove or qualify the claim and provide substantiation.
+    rewrite_strategy: qualify_claim
+```
+
+The rule engine matches signals against ad fields and extracted landing-page
+fields. A `*` in a signal is treated as a bounded wildcard, which supports
+patterns such as `lose * pounds` without requiring policy authors to write raw
+regular expressions.
+
+## Modules
+
+The bundled MVP modules are:
+
+- `health_claims`
+- `platform`
+- `privacy`
+- `brand_safety`
+- `disclosure`
+- `landing_page`
+
+Users can restrict evaluation with `policy_modules` in the scan config or load
+custom YAML with `adlint scan config.json --policy-path path/to/policies`.
+
+## Review Labels
+
+HIPAA, FTC Health Breach Notification Rule, Washington My Health My Data Act,
+CCPA, and tracking-pixel findings are labeled `requires_review`. AdLint does
+not make definitive legal determinations.

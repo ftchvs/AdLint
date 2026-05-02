@@ -3,9 +3,10 @@
 **Preflight risk checks for ads, landing pages, and growth campaigns before
 launch.**
 
-> Status: pre-MVP design-stage OSS project. This repository currently contains
-> product documentation and planned interfaces. It does not yet ship a runnable
-> CLI, API, or web UI.
+> Status: runnable CLI MVP. This repository ships a local-first Python package,
+> deterministic policy engine, YAML policy files, JSON and Markdown reports,
+> examples, tests, and a seed eval runner. API and web UI surfaces remain future
+> phases.
 
 AdLint is an open-source ad compliance and brand-safety engine for growth teams
 working in regulated or sensitive categories. It is designed to review ad copy,
@@ -104,17 +105,43 @@ Suggest lower-risk variations that preserve the campaign's intent. Rewrites may
 soften claims, add qualification, remove unsupported medical language, or
 recommend disclosure language.
 
-## Planned interface
+## Quick start
 
-The planned CLI shape is:
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/adlint scan examples/high_risk_tiktok_health.json --output-dir reports
+```
+
+Or run the bundled example without installing the console script:
+
+```bash
+.venv/bin/python -m adlint scan examples/high_risk_tiktok_health.json --format markdown
+```
+
+Single-command local path:
+
+```bash
+make dev
+```
+
+Docker path:
+
+```bash
+docker compose up
+```
+
+## CLI interface
+
+The CLI shape is:
 
 ```bash
 adlint scan <config>
 ```
 
-This command does not exist yet. The first implementation pass should scaffold
-the Python package, CLI command, policy loader, rule engine, scoring, report
-writer, and sample data.
+The first implementation pass includes the Python package, CLI command, policy
+loader, deterministic rule engine, transparent scoring, rewrite suggestions,
+report writer, seed evals, and sample data.
 
 Planned input shape:
 
@@ -164,11 +191,54 @@ Planned output shape:
     }
   ],
   "reports": {
-    "json": "planned",
-    "markdown": "planned"
+    "json": "reports/adlint-report.json",
+    "markdown": "reports/adlint-report.md"
   }
 }
 ```
+
+## Policy files
+
+Bundled YAML policy files live under `adlint/policies/`:
+
+- `ftc_health_claims.yml`
+- `platform_google_ads.yml`
+- `platform_tiktok_ads.yml`
+- `platform_linkedin_ads.yml`
+- `privacy_hipaa_marketing.yml`
+- `privacy_tracking_pixels.yml`
+- `privacy_consumer_health_data.yml`
+- `brand_safety_iab.yml`
+- `brand_custom_template.yml`
+
+Custom policies can be loaded with:
+
+```bash
+adlint scan examples/high_risk_tiktok_health.json --policy-path ./my-policies
+```
+
+## Local model pass
+
+Rules run without a model. To add a local Ollama-compatible classifier:
+
+```bash
+ollama pull gpt-oss-safeguard-20b
+ADLINT_OLLAMA_MODEL=gpt-oss-safeguard-20b adlint scan examples/high_risk_tiktok_health.json --enable-model
+```
+
+If the model endpoint is unavailable, AdLint still returns rule-based findings
+and marks the model status as `unavailable`.
+
+## Evals and tests
+
+```bash
+make test
+make eval
+```
+
+The seed eval set includes 50 curated examples across health, wellness,
+finance, SaaS, creator disclosure, privacy, landing-page mismatch, and
+brand-safety scenarios. It is a starting point, not a real-world benchmark.
 
 ## Example: high risk
 

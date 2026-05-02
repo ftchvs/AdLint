@@ -70,6 +70,8 @@ def _match_policy(policy: Policy, fields: dict[str, str]) -> list[Evidence]:
             match = pattern.search(text)
             if not match:
                 continue
+            if _is_negated_match(text, match.start(), match.end()):
+                continue
             snippet = _snippet(text, match.start(), match.end())
             key = (snippet, source)
             if key in seen:
@@ -183,6 +185,15 @@ def _snippet(text: str, start: int, end: int) -> str:
     suffix = min(len(text), end + 50)
     snippet = " ".join(text[prefix:suffix].split())
     return snippet[:137] + "..." if len(snippet) > 140 else snippet
+
+
+def _is_negated_match(text: str, start: int, end: int) -> bool:
+    before = text[max(0, start - 40) : start].lower()
+    after = text[end : min(len(text), end + 40)].lower()
+    previous_words = before.split()[-5:]
+    if any(negator in previous_words for negator in ("without", "not", "no")):
+        return True
+    return "collection" in after and any(word in previous_words for word in ("without", "no"))
 
 
 def _important_terms(text: str) -> set[str]:

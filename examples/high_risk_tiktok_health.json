@@ -1,0 +1,11 @@
+{
+  "platform": "tiktok",
+  "country": "US",
+  "industry": "health",
+  "target_age_range": "18-45",
+  "headline": "Lose 20 pounds in 30 days guaranteed",
+  "body": "Our clinically proven supplement melts fat fast. Try it risk-free today.",
+  "cta": "Buy now",
+  "policy_modules": ["health_claims", "platform", "privacy", "brand_safety"],
+  "landing_page_html": "<html><head><title>Clinically proven weight loss</title><script>fbq('track', 'Lead');</script></head><body><h1>Lose weight with our supplement</h1><p>Results vary. Consult your doctor before starting any supplement.</p><form><input name='email' type='email'></form></body></html>"
+}

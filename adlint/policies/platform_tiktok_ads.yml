@@ -11,6 +11,7 @@ policies:
       - weight loss
       - skinny
       - melts fat
+      - belly fat
       - body transformation
     recommended_action: Avoid body-image pressure and absolute weight-management language.
     rewrite_strategy: wellness_support

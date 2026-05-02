@@ -10,7 +10,10 @@ policies:
       - supplement
       - prescription
       - pharmacy
-      - medical
+      - medical treatment
+      - medical device
+      - medical clinic
+      - clinic appointment
       - telehealth
       - health insurance
     recommended_action: Confirm Google Ads healthcare policy eligibility and required certifications.
