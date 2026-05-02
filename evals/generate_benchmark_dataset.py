@@ -112,11 +112,11 @@ def _high_risk_health_rows() -> list[dict[str, Any]]:
     ]
     clinic_rows = [
         ("Clinic appointment scheduler", "Book with a provider and manage patient follow-up.", "Book appointment"),
-        ("Telehealth appointment reminders", "Coordinate provider notes and book appointment check-ins.", "Request demo"),
+        ("Telehealth appointment reminders", "Coordinate provider notes and book appointment check-ins for patients.", "Request demo"),
         ("Medical clinic intake workflow", "Collect intake form details before a provider visit.", "Start intake"),
-        ("Prescription support visit", "Meet a provider and book appointment follow-up.", "Schedule"),
+        ("Prescription support visit", "Meet a provider and book appointment follow-up for patients.", "Schedule"),
         ("Health insurance appointment help", "Prepare patient notes and book appointment follow-up.", "Learn more"),
-        ("Medical device consultation", "Book appointment details with a clinic provider.", "Book now"),
+        ("Medical device consultation", "Book appointment details with a clinic provider and patient records.", "Book now"),
         ("Pharmacy refill coordination", "Share patient details before a book appointment request.", "Start request"),
         ("Clinic appointment follow-up portal", "Manage book appointment reminders and medical record tasks.", "Open portal"),
         ("Telehealth provider visit", "Book appointment reminders for patient care.", "Get started"),
@@ -258,7 +258,11 @@ def _linkedin_rows() -> list[dict[str, Any]]:
         ("Hiring event for recent graduates only", "Roles for young professionals only.", ["linkedin_sensitive_targeting", "linkedin_discrimination_risk"]),
         ("Career group by age", "Community resources for a specific age cohort.", ["linkedin_sensitive_targeting"]),
         ("Benefits guide for pregnancy support", "Review workplace resources and policies.", ["linkedin_sensitive_targeting"]),
-        ("Professional network by religion", "Join a group filtered around religion.", ["linkedin_sensitive_targeting"]),
+        (
+            "Professional network by religion",
+            "Join a group filtered around religion.",
+            ["linkedin_sensitive_targeting", "brand_safety_sensitive_social_issue"],
+        ),
         ("Recruiting campaign by ethnicity", "Segment outreach by ethnicity.", ["linkedin_sensitive_targeting"]),
         ("Wellness tool for disability support", "Resources for employees with a disability.", ["linkedin_sensitive_targeting"]),
         ("Native speaker hiring filter", "Applicants must be native speaker.", ["linkedin_discrimination_risk"]),
@@ -350,13 +354,13 @@ def _landing_page_rows() -> list[dict[str, Any]]:
     rows = [
         ("Clinically proven supplement discount", "Lose weight with our guaranteed plan."),
         ("Doctor recommended supplement sale", "Lose 10 pounds with a guaranteed routine."),
-        ("Guaranteed clinical weight loss offer", "Burn fat with a supplement discount."),
-        ("Supplement plan guaranteed", "Lose weight with clinical coaching."),
+        ("Clinically backed weight loss offer", "Burn fat with a guaranteed supplement discount."),
+        ("Supplement plan guaranteed", "Lose weight with clinically backed coaching."),
         ("Clinically proven weight loss trial", "Supplement plan with a guaranteed discount."),
         ("Doctor recommended weight plan", "Lose 12 pounds with a guaranteed supplement offer."),
-        ("Clinical supplement starter kit", "Burn fat with our guaranteed routine."),
+        ("Clinically backed supplement starter kit", "Burn fat with our guaranteed routine."),
         ("Weight loss supplement discount", "Clinically proven guaranteed program for busy weeks."),
-        ("Guaranteed supplement challenge", "Lose weight with clinical check-ins."),
+        ("Guaranteed supplement challenge", "Lose weight with clinical study check-ins."),
         ("Supplement sale for weight loss", "Doctor recommended plan with guaranteed support."),
     ]
     landing_page = "<html><body><h1>General lifestyle newsletter</h1><p>Recipes and travel notes.</p></body></html>"

@@ -482,14 +482,35 @@ def test_benchmark_dataset_reports_policy_and_category_precision_recall() -> Non
     dataset_path = ROOT / "evals" / "datasets" / "rule_benchmark_v1.jsonl"
     rows = run_eval._load_rows(dataset_path)
     policy_categories = run_eval._policy_categories()
-    metrics = run_eval._metrics([run_eval._score_row(row, policy_categories=policy_categories) for row in rows])
+    metrics = run_eval._metrics(
+        [run_eval._score_row(row, policy_categories=policy_categories) for row in rows],
+        max_review_notes=100,
+    )
 
     assert metrics["total_examples"] == 200
-    assert metrics["decision_accuracy"] >= 0.7
+    assert metrics["decision_accuracy"] == 1.0
     assert {"approved", "needs_review", "high_risk"} <= metrics["confusion_matrix"].keys()
     assert "health_claims" in metrics["category_metrics"]
     assert "guaranteed_outcome" in metrics["policy_metrics"]
-    assert metrics["review_notes"]["false_positives"]
+    assert metrics["review_notes"]["decision_mismatches"] == []
+    assert metrics["review_notes"]["false_positives"] == []
+    assert metrics["review_notes"]["false_negatives"] == []
+
+
+def test_real_case_dataset_has_adjudicated_policy_labels() -> None:
+    dataset_path = ROOT / "evals" / "datasets" / "real_cases_v1.jsonl"
+    rows = run_eval._load_rows(dataset_path)
+    policy_categories = run_eval._policy_categories()
+    metrics = run_eval._metrics(
+        [run_eval._score_row(row, policy_categories=policy_categories) for row in rows],
+        max_review_notes=100,
+    )
+
+    assert metrics["total_examples"] == 13
+    assert metrics["decision_accuracy"] == 1.0
+    assert metrics["review_notes"]["decision_mismatches"] == []
+    assert metrics["review_notes"]["false_positives"] == []
+    assert metrics["review_notes"]["false_negatives"] == []
 
 
 def test_eval_docs_reference_current_reproducible_commands_and_dataset() -> None:

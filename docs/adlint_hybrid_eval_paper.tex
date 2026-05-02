@@ -128,17 +128,17 @@ brand-safety review. This paper reports the current evaluation evidence for a
 hybrid architecture in which deterministic policy-as-code rules remain the
 decision backbone and a local Ollama model contributes additive review signal.
 On a 200-example synthetic rule benchmark, rules reached 1.000 decision
-accuracy with zero policy false negatives and eight policy-label false-positive
-review notes. On a real local-model smoke run over three seed rows, the
+accuracy with zero policy false-positive or false-negative review notes. On a
+real local-model smoke run over three seed rows, the
 configured model returned status \texttt{ok} for all model-required calls.
 Model-only accuracy was 0.667, while hybrid accuracy remained 1.000 and added
 three review-only model findings. The result supports delaying fine-tuning and
 prioritizing measurement of where the local model adds, rescues, or harms the
 deterministic baseline.
-A new 13-row public-source real-case diagnostic set adds sourced FTC, ASA/CAP,
-and DOJ/HUD-style cases. It is not yet a reliability benchmark, but it exposes
-policy-level false-positive and false-negative notes on high-risk public
-patterns.
+A 13-row public-source real-case diagnostic set adds sourced FTC, ASA/CAP, and
+DOJ/HUD-style cases. It is not yet a reliability benchmark, but its initial
+policy-level notes have now been adjudicated into corrected labels and tighter
+rules.
 \end{minipage}
 
 \section{Recommendation}
@@ -249,14 +249,19 @@ benchmark.
 Examples & 200 \\
 Decision accuracy & 1.000 \\
 Decision mismatches & 0 \\
-Policy false-positive review notes & 8 \\
+Policy false-positive review notes & 0 \\
 Policy false-negative review notes & 0 \\
 Approved labels & 51 \\
-Needs-review labels & 48 \\
-High-risk labels & 101 \\
+Needs-review labels & 50 \\
+High-risk labels & 99 \\
 \bottomrule
 \end{tabularx}
 \end{table}
+
+The 1.000 result is best read as internal regression evidence. If the 200 rows
+were a representative random sample, 200/200 correct decisions would imply an
+approximate 95\% Wilson lower bound of 0.981; they are not random, so the
+statistic should not be used as a production reliability claim.
 
 \begin{figure}[!htbp]
 \centering
@@ -280,8 +285,8 @@ High-risk labels & 101 \\
   axis y line*=left
 ]
 \addplot[fill=oiBlue!70, draw=oiBlue] coordinates {
-  (101,High risk)
-  (48,Needs review)
+  (99,High risk)
+  (50,Needs review)
   (51,Approved)
 };
 \end{axis}
@@ -297,7 +302,7 @@ High-risk labels & 101 \\
   width=0.82\linewidth,
   height=4.9cm,
   xlabel={Precision},
-  xmin=0.84,
+  xmin=0.94,
   xmax=1.02,
   symbolic y coords={Privacy,Platform,Landing,Health,Disclosure,Brand safety},
   ytick=data,
@@ -323,25 +328,26 @@ High-risk labels & 101 \\
   (1.000,Privacy) [1.000]
   (1.000,Platform) [1.000]
   (1.000,Landing) [1.000]
-  (0.929,Health) [0.929]
-  (0.929,Disclosure) [0.929]
-  (0.885,Brand safety) [0.885]
+  (1.000,Health) [1.000]
+  (1.000,Disclosure) [1.000]
+  (1.000,Brand safety) [1.000]
 };
 \draw[densely dotted, draw=adlintline] (axis cs:1.000,Privacy) -- (axis cs:1.000,Brand safety);
 \end{axis}
 \end{tikzpicture}
-\caption{Category-level precision for selected benchmark categories. Recall was
-1.000 for all categories shown.}
+\caption{Category-level precision for selected benchmark categories after
+label adjudication. Recall was 1.000 for all categories shown.}
 \label{fig:category-precision}
 \end{figure}
 
 \subsection{Real-case Diagnostics}
 
-Table~\ref{tab:real-cases} summarizes the first public-source diagnostic run.
+Table~\ref{tab:real-cases} summarizes the adjudicated public-source diagnostic
+run.
 These rows are deliberately high-risk and hand selected, so the decision
-accuracy is not a real-world reliability estimate. The useful signal is the
-policy-level review queue: two false-negative notes and eleven false-positive
-notes that identify concrete rule and label questions.
+accuracy is not a real-world reliability estimate. The useful signal is that
+the initial policy-level review queue has been resolved into tighter rules and
+corrected expected labels.
 
 \begin{table}[!htbp]
 \centering
@@ -356,21 +362,26 @@ Examples & 13 \\
 Expected high-risk rows & 13 \\
 Decision accuracy & 1.000 \\
 Decision mismatches & 0 \\
-Policy false-negative review notes & 2 \\
-Policy false-positive review notes & 11 \\
+Policy false-negative review notes & 0 \\
+Policy false-positive review notes & 0 \\
 \bottomrule
 \end{tabularx}
 \end{table}
+
+For scale, 13/13 correct decisions would imply only an approximate 95\% Wilson
+lower bound of 0.772 under a representative random-sample assumption. Because
+these rows are hand selected and all high-risk, that interval is illustrative
+only.
 
 \begin{figure}[!htbp]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
   ybar,
-  width=0.68\linewidth,
+  width=0.76\linewidth,
   height=4.3cm,
   ylabel={Review notes},
-  symbolic x coords={False negatives,False positives},
+  symbolic x coords={Initial FN,Initial FP,Current FN,Current FP},
   xtick=data,
   ymin=0,
   ymax=12.5,
@@ -383,12 +394,14 @@ Policy false-positive review notes & 11 \\
   axis y line*=left
 ]
 \addplot[fill=oiOrange!75, draw=oiOrange] coordinates {
-  (False negatives,2)
-  (False positives,11)
+  (Initial FN,2)
+  (Initial FP,11)
+  (Current FN,0)
+  (Current FP,0)
 };
 \end{axis}
 \end{tikzpicture}
-\caption{Policy-level review notes from the first real-case diagnostic set.}
+\caption{Real-case policy-level review notes before and after adjudication.}
 \label{fig:real-case-notes}
 \end{figure}
 
