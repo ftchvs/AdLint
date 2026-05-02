@@ -148,3 +148,32 @@ def test_analyze_accepts_ui_payload_shape() -> None:
     } <= payload.keys()
     assert payload["landing_page"]["title"] == "Sleep newsletter"
     assert payload["landing_page"]["forms"] == ["Email signup, email"]
+
+
+def test_analyze_passes_optional_ollama_model_override(monkeypatch) -> None:
+    def fake_classify(submission, *, model=None, endpoint=None):
+        return [], {
+            "enabled": True,
+            "provider": "ollama",
+            "model": model,
+            "endpoint": endpoint,
+            "status": "unavailable",
+            "reason": "model_not_installed",
+            "ran": False,
+        }
+
+    monkeypatch.setattr("adlint.engine.classify_with_ollama", fake_classify)
+
+    response = client.post(
+        "/analyze",
+        json={
+            **high_risk_payload(),
+            "model_enabled": True,
+            "ollama_model": "local-test-model",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["model"]["model"] == "local-test-model"
+    assert payload["model"]["status"] == "unavailable"

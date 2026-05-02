@@ -33,6 +33,14 @@ Run the original seed smoke eval:
 make eval
 ```
 
+Run rule-only, model-only, and hybrid comparison. This remains safe when no
+local model is installed; model-only rows are skipped and hybrid remains
+rule-based with model status metadata:
+
+```bash
+make model-benchmark
+```
+
 Direct command used by the benchmark target:
 
 ```bash
@@ -96,7 +104,9 @@ sensitive-social-issue matches on some LinkedIn targeting examples.
   landing-page extraction quality beyond the policy hits produced from the
   extracted text.
 - Optional model-assisted classification must be benchmarked separately when a
-  local Ollama-compatible model is actually available.
+  local Ollama-compatible model is actually available. The comparison command
+  reports unavailable or skipped model rows instead of treating them as quality
+  evidence.
 
 ## Known Failure Modes
 

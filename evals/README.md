@@ -21,6 +21,15 @@ Run the benchmark:
 make benchmark
 ```
 
+Compare rule-only, model-only, and hybrid modes:
+
+```bash
+make model-benchmark
+```
+
+If no requested local model is installed, model-only rows are skipped and
+hybrid rows keep the rule-only decision with model status metadata.
+
 ## Row Schema
 
 Required fields:

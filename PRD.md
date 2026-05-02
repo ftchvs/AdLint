@@ -14,6 +14,12 @@ landing pages before launch. It flags risky claims, missing disclosures,
 platform-policy concerns, health/privacy review triggers, landing-page
 mismatches, and brand-safety risks.
 
+Future scope adds an optional image creative vision layer for static banners,
+social feed images, story frames, thumbnails, and similar image-first ads. This
+layer reviews the visual creative alongside copy and landing-page context
+instead of treating image text, badges, disclaimers, and visual claims as
+invisible to the preflight check.
+
 AdLint is decision-support software. It must not claim that an ad is legally
 compliant or guaranteed to pass platform review. It classifies creative as
 `approved`, `needs_review`, or `high_risk`, then explains the decision with
@@ -72,6 +78,8 @@ The following are not part of the implemented MVP review target:
   parser and robots-aware URL fetching.
 - Verified live Ollama model runs. Optional Ollama integration exists, but the
   MVP does not yet claim benchmarked local model quality.
+- Image creative vision analysis for banners, social images, thumbnails, or
+  other visual assets.
 - Fine-tuning or adapter training.
 
 ## 3. Problem
@@ -136,6 +144,8 @@ then returns:
   violations.
 - Composable: CLI, API, and library modes are first-class so teams can plug
   AdLint into CI, internal tools, and future UIs.
+- Multimodal with consent: future image analysis must be opt-in, explainable,
+  and clear about whether assets stay local or are sent to a hosted provider.
 
 ## 7. Implemented MVP scope
 
@@ -231,6 +241,59 @@ Examples:
 - Add disclosure reminders for sponsored or affiliate content.
 - Ask users to review privacy and consent details before continuing.
 
+### 7.7 Future image creative vision layer
+
+AdLint should support static image creatives after the text and landing-page MVP
+is stable. The first version should focus on banners, display ads, social feed
+images, story frames, thumbnail-style ads, and other still assets where policy
+risk often lives inside rendered text or visual treatment.
+
+Future accepted inputs:
+
+- Local image file path for CLI and library use.
+- Image URL for API and Web UI use, subject to fetch and size limits.
+- Optional placement metadata such as aspect ratio, platform placement,
+  campaign name, destination URL, and known brand guidelines.
+- Optional alt text or designer notes supplied by the user.
+
+Future extracted signals:
+
+- OCR text from the image, including headline-like text, offer text, badges,
+  price claims, urgency language, and disclaimer text.
+- Disclosure legibility, including whether important qualifiers are too small,
+  low contrast, partially cropped, or visually separated from the claim.
+- Visual claim patterns such as before/after layouts, transformation framing,
+  body-image pressure, medical or professional authority cues, exaggerated
+  scarcity badges, or fake platform UI elements.
+- Brand-safety and suitability cues such as violence, adult themes, tragedy,
+  politics, misinformation, or sensitive social issues when they are visible in
+  the creative itself.
+- Copy-to-image mismatch, such as a safe text submission paired with a
+  high-risk visual claim, missing disclaimer, or conflicting price/offering in
+  the banner.
+
+Future outputs should preserve the existing decision-support model:
+
+- Policy hits cite image evidence with sources such as
+  `creative_image_1.ocr_text`, `creative_image_1.disclosure`, or
+  `creative_image_1.visual_observation`.
+- Reports include extracted image text, visual observations, confidence level,
+  provider status, and any fetch or processing errors.
+- The final decision remains `approved`, `needs_review`, or `high_risk`.
+- Findings remain framed as preflight review signals, not legal conclusions or
+  guaranteed platform-review outcomes.
+
+Guardrails:
+
+- Do not perform face recognition, identity lookup, protected-class inference,
+  or medical diagnosis from an image.
+- Do not infer sensitive personal attributes about depicted people.
+- Do not store creative assets by default.
+- Require explicit opt-in before sending image assets to any hosted vision
+  provider.
+- Prefer local OCR or local vision-capable models when feasible, with hosted
+  multimodal providers treated as a clearly labeled deployment option.
+
 ## 8. Non-goals
 
 The MVP will not:
@@ -244,6 +307,8 @@ The MVP will not:
 - Make definitive HIPAA or statutory violation determinations.
 - Claim verified local model quality before live Ollama runs are benchmarked.
 - Fine-tune a model before enough labeled data exists.
+- Use image analysis for face recognition, identity lookup, protected-class
+  inference, medical diagnosis, or sensitive personal-attribute inference.
 
 Fine-tuning should be considered only after a useful labeled dataset exists and
 benchmarks show a clear improvement over prompted baselines.
@@ -400,6 +465,7 @@ Representative output shape:
 | FR-18 | Implemented | A one-page Web UI lets users paste copy, select settings, analyze through the existing API, review results, copy rewrites, and export JSON or Markdown. |
 | FR-19 | Future | `scoring.yml` will let teams tune thresholds and weights without code changes. |
 | FR-20 | Future | SQLite storage may support eval datasets, run metadata, and anonymized logs. |
+| FR-21 | Future | Users can attach static image creatives, such as banners or social images, for OCR, visual claim review, disclosure legibility checks, and image-to-copy mismatch detection. |
 
 ## 11. Policy modules
 
@@ -483,6 +549,9 @@ Roadmap architecture:
 - Frontend: lightweight static Web UI served by FastAPI.
 - Scraping: Playwright for JavaScript-enabled pages, with `trafilatura` as a
   static extraction fallback.
+- Image creative vision: optional asset ingestion, image fetch or file loading,
+  OCR, vision-model observations, visual policy checks, and evidence merging
+  into the existing `PolicyHit` shape.
 - Storage: SQLite for eval datasets, run metadata, and optional anonymized logs.
 - Config: future `scoring.yml` for threshold and weight calibration.
 - Model validation: verified local Ollama runs with benchmarked rule-only,
@@ -495,6 +564,7 @@ Input (ad + metadata)
   -> Normalize ad and page data
   -> Landing page fetch or HTML parsing
   -> Tracker and pixel detection
+  -> Optional image creative OCR and vision extraction
   -> Rule-based checks
   -> Optional local model classifier
   -> Risk scoring
@@ -539,6 +609,12 @@ medium-only findings stay in `needs_review`. Thresholds and weights should
 move to a future `scoring.yml` file so teams can calibrate sensitivity by use
 case. High-severity health, privacy, and safety categories should favor recall
 over precision.
+
+Future image creative scoring should add transparent weights for image-only
+claims, unreadable disclosures, before/after or transformation visuals, visual
+health/privacy cues, and copy-to-image mismatches. These weights should be
+reported separately so teams can see when the visual asset, rather than the
+typed copy, drove the review decision.
 
 ## 14. Evaluation plan
 
@@ -595,6 +671,12 @@ Future benchmark reports should include:
 - Rewrite quality review for clarity, risk reduction, and intent preservation.
 - Representative examples and known failure modes.
 
+Future image creative evals should include labeled banners and social image
+assets with expected OCR text, visual observations, policy labels, and reviewer
+notes. The benchmark should track OCR quality, disclosure-legibility recall,
+visual-claim recall, false positives on benign imagery, and mismatch detection
+between typed copy, image text, and landing-page claims.
+
 ## 15. Phase plan
 
 ### Phase 1: Core engine MVP - implemented
@@ -648,6 +730,20 @@ Future benchmark reports should include:
   evidence shows a clear need.
 - Publish an adapter and model card only if quality improves.
 
+### Phase 6: Image creative vision layer
+
+- Add a `creative_assets` input contract for static image creatives.
+- Implement bounded local file and URL ingestion with size, type, and privacy
+  controls.
+- Add OCR extraction for image text and disclosure text.
+- Add a vision-observation adapter that can run locally where feasible and can
+  support hosted providers only with explicit user opt-in.
+- Convert OCR and visual observations into policy evidence using the existing
+  `PolicyHit` and scoring model.
+- Add report sections for extracted image text, visual observations, provider
+  status, and processing errors.
+- Build a labeled image creative eval set before claiming quality.
+
 ## 16. Suggested repository structure
 
 Current repository structure:
@@ -690,7 +786,9 @@ AdLint/
 ```
 
 Future directories may include SQLite-backed storage migrations and persisted
-eval results.
+eval results. The image creative roadmap may add modules such as
+`adlint/creative_assets/`, OCR fixtures, and visual-policy eval data once that
+work begins.
 
 ## 17. Success criteria
 
@@ -721,6 +819,8 @@ AdLint becomes successful beyond the MVP if:
   privacy, and safety categories.
 - Teams can tune scoring with `scoring.yml` without editing code.
 - Local model use is benchmarked and documented with clear limitations.
+- Static image creatives can be reviewed with transparent OCR and visual
+  evidence when the image layer is enabled.
 - At least one external team can adopt AdLint without direct maintainer support.
 
 ## 18. Source references

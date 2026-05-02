@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from adlint.models import Evidence, PolicyHit
+
 
 ROOT = Path(__file__).resolve().parents[1]
 RUN_EVAL_PATH = ROOT / "evals" / "run_eval.py"
@@ -143,6 +145,96 @@ def test_eval_runner_returns_failure_when_accuracy_threshold_is_not_met(tmp_path
     assert metrics["review_notes"]["decision_mismatches"][0]["decision_error_type"] == "undercall"
 
 
+def test_model_only_eval_skips_when_requested_model_is_unavailable(monkeypatch) -> None:
+    def fake_classify(submission, *, model=None, endpoint=None):
+        return [], {
+            "enabled": True,
+            "provider": "ollama",
+            "model": model,
+            "endpoint": endpoint,
+            "status": "unavailable",
+            "reason": "model_not_installed",
+            "ran": False,
+        }
+
+    monkeypatch.setattr(run_eval, "classify_with_ollama", fake_classify)
+
+    metrics = run_eval._run_eval(
+        [
+            {
+                "id": "approved-saas",
+                "input": {
+                    "platform": "linkedin",
+                    "industry": "saas",
+                    "headline": "Plan campaign launches",
+                    "body": "Coordinate launch notes.",
+                    "cta": "Learn more",
+                },
+                "expected_decision": "approved",
+            }
+        ],
+        mode="model-only",
+        ollama_model="missing-model",
+    )
+
+    assert metrics["mode"] == "model-only"
+    assert metrics["input_examples"] == 1
+    assert metrics["total_examples"] == 0
+    assert metrics["skipped_examples"] == 1
+    assert metrics["model_status_counts"] == {"unavailable": 1}
+    assert metrics["model_required_failures"] == 1
+
+
+def test_model_only_eval_scores_valid_local_model_response(monkeypatch) -> None:
+    def fake_classify(submission, *, model=None, endpoint=None):
+        return [
+            PolicyHit(
+                policy_id="model_policy_review",
+                severity="medium",
+                category="model_review",
+                evidence=[Evidence(text="review requested", source="model")],
+                recommended_action="Review model concern.",
+                requires_review=True,
+                source="ollama",
+            )
+        ], {
+            "enabled": True,
+            "provider": "ollama",
+            "model": model,
+            "endpoint": endpoint,
+            "status": "ok",
+            "ran": True,
+            "raw_decision": "needs_review",
+        }
+
+    monkeypatch.setattr(run_eval, "classify_with_ollama", fake_classify)
+
+    metrics = run_eval._run_eval(
+        [
+            {
+                "id": "model-review",
+                "input": {
+                    "platform": "google",
+                    "industry": "general",
+                    "headline": "Check this ad",
+                    "body": "The local model asks for review.",
+                    "cta": "Learn more",
+                },
+                "expected_decision": "needs_review",
+                "expected_policy_ids": ["model_policy_review"],
+                "expected_categories": ["model_review"],
+            }
+        ],
+        mode="model-only",
+        ollama_model="installed-model",
+    )
+
+    assert metrics["total_examples"] == 1
+    assert metrics["decision_accuracy"] == 1.0
+    assert metrics["model_status_counts"] == {"ok": 1}
+    assert metrics["policy_metrics"]["model_policy_review"]["recall"] == 1.0
+
+
 def test_eval_runner_reports_confusion_matrix_notes_and_category_metrics() -> None:
     results = [
         {
@@ -265,9 +357,11 @@ def test_eval_docs_reference_current_reproducible_commands_and_dataset() -> None
 
     assert "make benchmark-data" in eval_report
     assert "make benchmark" in eval_report
+    assert "make model-benchmark" in eval_report
     assert "make eval" in eval_report
     assert "evals/datasets/rule_benchmark_v1.jsonl" in eval_report
     assert "not evidence of legal compliance" in eval_report
     assert "make benchmark-data" in eval_readme
+    assert "make model-benchmark" in eval_readme
     assert "do not predict" in eval_readme
     assert "platform approval" in eval_readme
