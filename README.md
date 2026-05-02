@@ -1,161 +1,93 @@
 # AdLint
 
-**Preflight risk checks for ads, landing pages, and growth campaigns before
-launch.**
+**Local-first preflight risk checks for ads, landing pages, and growth
+campaigns before launch.**
 
-> Status: runnable CLI MVP. This repository ships a local-first Python package,
-> deterministic policy engine, YAML policy files, JSON and Markdown reports,
-> a FastAPI service, examples, tests, and a seed eval runner. Web UI surfaces
-> remain future phases.
+AdLint is a runnable Python CLI/API MVP for deterministic ad policy,
+brand-safety, privacy, and disclosure checks. It reviews ad copy and optional
+landing-page content, then returns an explainable decision, risk score,
+evidence, recommended actions, and safer rewrite suggestions.
 
-AdLint is an open-source ad compliance and brand-safety engine for growth teams
-working in regulated or sensitive categories. It is designed to review ad copy,
-landing pages, and campaign metadata before launch, then return an explainable
-risk decision with evidence, mitigation steps, and safer rewrites.
+AdLint is decision-support software, not legal advice. It does not guarantee
+platform approval or make definitive statutory violation determinations.
 
-AdLint is decision-support software, not legal advice. It should not claim that
-an ad is legally compliant or guaranteed to pass platform review. Its job is to
-surface risk early, make review faster, and help teams fix risky language before
-campaigns go live.
+## What runs today
 
-## Why this exists
+- Python package with the `adlint scan` CLI.
+- FastAPI app with `GET /health`, `POST /analyze`, and `POST /eval`.
+- YAML policy files under `adlint/policies/`, plus custom policy paths.
+- Deterministic rule engine with policy-module, platform, and industry filters.
+- Transparent score thresholds for `approved`, `needs_review`, and `high_risk`.
+- JSON stdout, Markdown stdout, and paired JSON/Markdown report files.
+- Safer rewrite suggestions for high-risk and review-required findings.
+- Opt-in JSONL run logging for local evaluation workflows.
+- Seed eval runner with 50 curated examples.
+- Makefile and Docker Compose paths for local development.
 
-Growth teams ship fast, but campaign risk is often discovered late: during ad
-platform review, after account-quality issues, or in legal review. The risk is
-especially high in health, wellness, finance, privacy-sensitive, employment,
-housing, credit, and creator campaigns.
+## Not in this MVP yet
 
-Many existing review tools are enterprise-only, opaque, or disconnected from
-creative and build workflows. AdLint aims to be local-first, explainable, and
-easy to plug into developer and marketing operations workflows.
-
-## Planned capabilities
-
-AdLint is intended to evaluate:
-
-- Ad copy, including headline, body, CTA, platform, industry, and audience
-  metadata.
-- Landing pages, including titles, headings, visible claims, forms, pricing
-  text, disclaimers, and tracking scripts.
-- Policy-as-code rules defined in YAML.
-- Model-based classifiers for ambiguous or nuanced policy calls.
-- Brand-safety and suitability categories based on IAB-style sensitive-topic
-  groupings.
-
-The planned output includes:
-
-- Decision: `approved`, `needs_review`, or `high_risk`.
-- Numeric risk score.
-- Policy categories triggered.
-- Exact evidence from ad copy or landing-page content.
-- Recommended disclosures, mitigation steps, or review actions.
-- Safer rewrite suggestions that preserve campaign intent.
-- Machine-readable JSON and human-readable Markdown reports.
-
-## Target users
-
-- Growth and performance marketers running always-on experiments.
-- Startup founders and heads of growth in regulated or sensitive categories.
-- Marketing operations teams and agencies managing multi-platform campaigns.
-- Compliance reviewers and legal operations teams that need structured
-  pre-review signals.
-- Brand managers concerned with suitability, adjacency, and reputation risk.
-- Engineers embedding campaign checks into CI, internal tools, or custom UIs.
-
-## MVP focus
-
-The MVP should focus on high-signal checks for health, wellness, finance, and
-adjacent sensitive categories.
-
-### Ad claim risk
-
-Detect unsupported, absolute, or high-risk claims such as guaranteed outcomes,
-clinical proof language, rapid weight-loss promises, income promises, or
-medicalized claims that likely need substantiation or review.
-
-### Platform policy risk
-
-Provide initial modules for:
-
-- Google Ads health and misrepresentation risk.
-- TikTok misleading and weight-management ad risk.
-- LinkedIn sensitive targeting and discrimination risk.
-
-Meta support is planned for a later phase after the core policy engine works.
-
-### Health privacy risk
-
-Flag health-related landing pages and flows that may require review because
-they combine sensitive health context with tracking pixels, ad platforms,
-identifiers, forms, or conversion events.
-
-Privacy findings should be labeled `requires_review`. AdLint should not make a
-definitive HIPAA, FTC, Washington My Health My Data Act, or CCPA violation
-determination.
-
-### Brand safety and suitability
-
-Classify pages and campaign context into sensitive-topic groupings such as
-adult content, violence, politics, tragedy, misinformation, and sensitive social
-issues. Attach a simple suitability level so teams can route risk consistently.
-
-### Rewrite assistance
-
-Suggest lower-risk variations that preserve the campaign's intent. Rewrites may
-soften claims, add qualification, remove unsupported medical language, or
-recommend disclosure language.
+- Web UI.
+- A larger 200-500 example benchmark.
+- `scoring.yml` configurability; scoring weights currently live in Python.
+- SQLite or other durable storage; raw submissions are not persisted by
+  default.
+- Playwright or trafilatura extraction. The current landing-page extractor is
+  a small stdlib HTML parser that can read inline HTML, local files, or
+  fetchable HTML URLs.
+- Verified live Ollama model quality or fine-tuning. An opt-in Ollama client is
+  present, but deterministic rules are the baseline.
 
 ## Quick start
 
+Requirements: Python 3.11 or newer. Docker is optional.
+
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install -e ".[dev]"
-.venv/bin/adlint scan examples/high_risk_tiktok_health.json --output-dir reports
+. .venv/bin/activate
+python -m pip install -e ".[dev]"
+adlint scan examples/high_risk_tiktok_health.json --output-dir reports
 ```
 
-Or run the bundled example without installing the console script:
+Without activating the virtual environment:
 
 ```bash
-.venv/bin/python -m adlint scan examples/high_risk_tiktok_health.json --format markdown
+.venv/bin/python -m adlint scan examples/high_risk_tiktok_health.json \
+  --format markdown
 ```
 
-Single-command local path:
+Makefile shortcuts:
 
 ```bash
-make dev
+make dev   # install and run the high-risk example, writing reports/
+make scan  # install and run the wellness example
+make api   # start uvicorn with adlint.api:app
+make eval  # run the seed evals and write evals/results/latest.json
+make test  # run pytest
 ```
 
-API path:
-
-```bash
-make api
-```
-
-Endpoints:
-
-- `POST /analyze`
-- `POST /eval`
-- `GET /health`
-
-Docker path:
+Docker Compose runs the bundled scan example and writes reports:
 
 ```bash
 docker compose up
 ```
 
-## CLI interface
-
-The CLI shape is:
+## CLI
 
 ```bash
 adlint scan <config>
 ```
 
-The first implementation pass includes the Python package, CLI command, FastAPI
-service, policy loader, deterministic rule engine, transparent scoring, rewrite
-suggestions, report writer, seed evals, and sample data.
+`<config>` can be JSON or YAML. Supported options:
 
-Planned input shape:
+- `--format json|markdown` controls stdout output. The default is JSON.
+- `--output-dir <dir>` writes `adlint-report.json` and `adlint-report.md`.
+- `--policy-path <path>` loads a policy YAML file or directory. Pass it more
+  than once to combine paths.
+- `--enable-model` calls the local Ollama-compatible classifier in addition to
+  deterministic rules.
+- `--ollama-model <name>` overrides `ADLINT_OLLAMA_MODEL`.
+
+Example config:
 
 ```json
 {
@@ -165,53 +97,68 @@ Planned input shape:
   "headline": "Lose 20 pounds in 30 days guaranteed",
   "body": "Our clinically proven supplement melts fat fast.",
   "cta": "Buy now",
-  "landing_page_url": "https://example.com",
+  "landing_page_html": "<html><body><h1>Fast results</h1></body></html>",
   "policy_modules": ["health_claims", "platform", "privacy"]
 }
 ```
 
-Planned output shape:
+Optional input fields include `target_age_range`, `landing_page_url`,
+`model_enabled`, `logging_enabled`, and `log_path`.
 
-```json
-{
-  "decision": "high_risk",
-  "risk_score": 0.91,
-  "policy_hits": [
-    {
-      "policy_id": "unsupported_health_claim",
-      "severity": "high",
-      "category": "health_claims",
-      "evidence": [
-        {
-          "text": "Lose 20 pounds in 30 days guaranteed",
-          "source": "headline"
-        }
-      ],
-      "recommended_action": "Remove or qualify the claim and provide substantiation."
-    }
-  ],
-  "requires_review": true,
-  "recommended_actions": [
-    "Remove guaranteed weight-loss claim.",
-    "Add substantiation or soften clinical claim."
-  ],
-  "safer_rewrites": [
-    {
-      "headline": "Support your wellness routine with daily nutrition",
-      "body": "Designed to complement healthy habits. Individual results vary.",
-      "cta": "Learn more"
-    }
-  ],
-  "reports": {
-    "json": "reports/adlint-report.json",
-    "markdown": "reports/adlint-report.md"
-  }
-}
+## API
+
+Start the API:
+
+```bash
+make api
 ```
 
-## Policy files
+Endpoints:
 
-Bundled YAML policy files live under `adlint/policies/`:
+- `GET /health` returns service status.
+- `POST /analyze` accepts the same payload shape as the CLI config and returns
+  the full analysis result.
+- `POST /eval` accepts `{"examples": [...]}` where each example can include an
+  `input` object and optional `expected_decision`.
+
+Minimal request:
+
+```bash
+curl -s http://127.0.0.1:8000/analyze \
+  -H 'content-type: application/json' \
+  -d '{
+    "platform": "google",
+    "industry": "wellness",
+    "headline": "A calmer routine for better sleep",
+    "body": "Join our wellness newsletter for science-backed tips.",
+    "cta": "Sign up"
+  }'
+```
+
+## Output
+
+Analysis results include:
+
+- `decision`: `approved`, `needs_review`, or `high_risk`.
+- `risk_score`: numeric score from `0.0` to `1.0`.
+- `policy_hits`: policy IDs, severity, category, evidence, and actions.
+- `requires_review`: true when a finding or score needs human review.
+- `recommended_actions`: de-duplicated action list.
+- `safer_rewrites`: deterministic rewrite suggestions.
+- `landing_page`: extracted title, headings, claims, forms, pricing,
+  disclaimers, trackers, or fetch errors.
+- `enabled_modules`, `model`, `logging_enabled`, and optional `reports`.
+
+Report files use fixed names:
+
+```text
+adlint-report.json
+adlint-report.md
+```
+
+## Policies
+
+Bundled policies live in `adlint/policies/`:
 
 - `ftc_health_claims.yml`
 - `platform_google_ads.yml`
@@ -223,164 +170,68 @@ Bundled YAML policy files live under `adlint/policies/`:
 - `brand_safety_iab.yml`
 - `brand_custom_template.yml`
 
-Custom policies can be loaded with:
+Default modules are `health_claims`, `platform`, `privacy`, `brand_safety`,
+`disclosure`, and `landing_page`. Pass `policy_modules` in a config to narrow
+the rule surface.
 
-```bash
-adlint scan examples/high_risk_tiktok_health.json --policy-path ./my-policies
+Policy files use a top-level `policies` list:
+
+```yaml
+policies:
+  - id: unsupported_health_claim
+    severity: high
+    category: health_claims
+    description: Health or wellness claim likely requiring substantiation.
+    modules: [health_claims]
+    industries: [health, wellness]
+    signals:
+      - clinically proven
+      - medical breakthrough
+    recommended_action: Remove or qualify the claim and provide substantiation.
+    requires_review: true
+    rewrite_strategy: qualify_claim
 ```
 
-## Local model pass
+## Evals and logging
 
-Rules run without a model. To add a local Ollama-compatible classifier:
+Run the seed evals:
+
+```bash
+make eval
+```
+
+The seed dataset has 50 examples across health, wellness, finance, SaaS,
+creator disclosure, privacy, landing-page mismatch, and brand-safety cases. It
+is a development sanity check, not a production benchmark.
+
+Raw submissions are not persisted by default. To opt into JSONL logging, set:
+
+```json
+{
+  "logging_enabled": true,
+  "log_path": "logs/adlint-runs.jsonl"
+}
+```
+
+## Local model hook
+
+Rules run without a model. To add an Ollama-compatible classifier:
 
 ```bash
 ollama pull gpt-oss-safeguard-20b
-ADLINT_OLLAMA_MODEL=gpt-oss-safeguard-20b adlint scan examples/high_risk_tiktok_health.json --enable-model
+ADLINT_OLLAMA_MODEL=gpt-oss-safeguard-20b \
+  adlint scan examples/high_risk_tiktok_health.json --enable-model
 ```
 
 If the model endpoint is unavailable, AdLint still returns rule-based findings
 and marks the model status as `unavailable`.
 
-## Evals and tests
+## Related docs
 
-```bash
-make test
-make eval
-```
-
-The seed eval set includes 50 curated examples across health, wellness,
-finance, SaaS, creator disclosure, privacy, landing-page mismatch, and
-brand-safety scenarios. It is a starting point, not a real-world benchmark.
-
-Raw submissions are not persisted by default. To opt into JSONL logging for
-evaluation workflows, set `logging_enabled: true` in a config and optionally
-provide `log_path`.
-
-## Example: high risk
-
-Input:
-
-```json
-{
-  "platform": "tiktok",
-  "industry": "health",
-  "headline": "Lose 20 pounds in 30 days guaranteed",
-  "body": "Our clinically proven supplement melts fat fast.",
-  "cta": "Buy now"
-}
-```
-
-Expected planned decision:
-
-```json
-{
-  "decision": "high_risk",
-  "risk_score": 0.91,
-  "policy_hits": [
-    "unsupported_health_claim",
-    "guaranteed_outcome",
-    "weight_loss_claim"
-  ],
-  "evidence": [
-    "Lose 20 pounds in 30 days guaranteed",
-    "clinically proven supplement",
-    "melts fat fast"
-  ],
-  "recommended_actions": [
-    "Remove guaranteed outcome language.",
-    "Qualify or substantiate clinical and weight-loss claims."
-  ]
-}
-```
-
-## Example: needs review
-
-Input:
-
-```json
-{
-  "platform": "google",
-  "industry": "wellness",
-  "headline": "A calmer routine for better sleep",
-  "body": "Join our wellness newsletter for science-backed tips.",
-  "cta": "Sign up",
-  "landing_page_url": "https://example.com/sleep-newsletter"
-}
-```
-
-Expected planned decision:
-
-```json
-{
-  "decision": "needs_review",
-  "risk_score": 0.52,
-  "policy_hits": [
-    "wellness_claim_review",
-    "tracking_pixel_risk"
-  ],
-  "evidence": [
-    "science-backed tips",
-    "Meta Pixel detected on a health-adjacent signup page"
-  ],
-  "recommended_actions": [
-    "Clarify what evidence supports the wellness claim.",
-    "Review consent, tracking, and disclosure paths before launch."
-  ]
-}
-```
-
-## Policy-as-code design
-
-Initial policy files are planned under `adlint/policies/`:
-
-```text
-ftc_health_claims.yml
-platform_google_ads.yml
-platform_tiktok_ads.yml
-platform_linkedin_ads.yml
-privacy_hipaa_marketing.yml
-privacy_tracking_pixels.yml
-privacy_consumer_health_data.yml
-brand_safety_iab.yml
-brand_custom_template.yml
-```
-
-Planned policy entry shape:
-
-```yaml
-id: unsupported_health_claim
-severity: high
-category: health_claims
-description: Health or wellness claim likely requiring substantiation.
-signals:
-  - guaranteed
-  - clinically proven
-  - cure
-  - lose * pounds
-model_prompt: >
-  Determine whether this ad makes a health-related claim that would likely
-  require substantiation or compliance review under health marketing rules.
-recommended_action: Remove or qualify the claim and provide substantiation.
-example_positive:
-  - "Lose 20 pounds in 30 days guaranteed."
-example_negative:
-  - "Support your wellness routine with daily nutrition. Results vary."
-```
-
-## Roadmap
-
-1. CLI MVP: Python package, planned `adlint scan <config>` command, policy YAML
-   loader, rule engine, scoring, JSON report, and Markdown report.
-2. Policy modules: health claims, platform policies, privacy/tracking, and
-   brand safety.
-3. Local model integration: Ollama-compatible classification and rewrite calls
-   using `gpt-oss-safeguard-20b`, `gpt-oss-20b`, or equivalent local models.
-4. Evals: curated examples, labeled datasets, confusion matrix, and
-   `docs/eval_report.md`.
-5. Web UI: paste ad copy, add landing page URL, select platform and industry,
-   view report, and export JSON or Markdown.
-6. Optional fine-tuning: train and publish an adapter only after real evals show
-   that it improves quality over prompted baselines.
+- `docs/policy_design.md`
+- `docs/legal_disclaimer.md`
+- `docs/local_models.md`
+- `docs/eval_report.md`
 
 ## Non-goals
 
@@ -388,10 +239,10 @@ AdLint does not aim to:
 
 - Guarantee platform approval.
 - Provide legal advice or replace counsel.
-- Make definitive HIPAA or statutory violation determinations.
+- Make definitive HIPAA, FTC, state privacy, or other statutory findings.
 - Store PHI or user-level customer data by default.
 - Submit ads to platforms or mutate live ad accounts.
-- Fine-tune models before enough labeled examples exist.
+- Fine-tune models before stronger eval evidence exists.
 
 ## References
 
