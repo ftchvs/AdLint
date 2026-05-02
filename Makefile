@@ -3,7 +3,7 @@ VENV := .venv
 BIN := $(VENV)/bin
 STAMP := $(VENV)/.installed
 
-.PHONY: api dev scan eval benchmark benchmark-data test install
+.PHONY: api dev scan eval benchmark benchmark-data model-benchmark test install
 
 install: $(STAMP)
 
@@ -29,6 +29,9 @@ benchmark-data: $(STAMP)
 
 benchmark: $(STAMP)
 	$(BIN)/python evals/run_eval.py evals/datasets/rule_benchmark_v1.jsonl --output evals/results/rule_benchmark_v1.json --markdown-output evals/results/rule_benchmark_v1.md
+
+model-benchmark: $(STAMP)
+	$(BIN)/python evals/run_eval.py evals/datasets/rule_benchmark_v1.jsonl --mode all --output evals/results/model_comparison.json --markdown-output evals/results/model_comparison.md
 
 test: $(STAMP)
 	$(BIN)/python -m pytest
