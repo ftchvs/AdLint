@@ -49,6 +49,9 @@ The review target includes:
   or review-required hits where feasible.
 - Seed evals: `evals/run_eval.py` scores the 50-example
   `evals/datasets/seed_ads.jsonl` dataset.
+- Review hardening: tests cover CLI scanning, API endpoints, policy loading and
+  filtering, report generation, documented examples, the seed eval runner, and
+  opt-in logging behavior.
 - Docs: setup, policy design, local model notes, eval status, and legal
   boundary docs exist in the repo.
 - Opt-in logging: `logging_enabled` and `log_path` write JSONL run logs only
@@ -607,12 +610,14 @@ Future benchmark reports should include:
 - Documentation and legal boundary notes.
 - Opt-in JSONL logging.
 
-### Phase 2: Review hardening - current
+### Phase 2: Review hardening - implemented
 
 - Keep README and PRD aligned with the actual MVP.
 - Validate local install, tests, CLI examples, API examples, and eval command.
 - Preserve the decision-support and legal-boundary language throughout docs.
 - Avoid claiming live model quality, production storage, or Web UI behavior.
+- Add focused tests for CLI output, reports, policy loading, documented
+  examples, eval runner metrics, and opt-in logging boundaries.
 
 ### Phase 3: Web UI
 

@@ -22,6 +22,8 @@ platform approval or make definitive statutory violation determinations.
 - Safer rewrite suggestions for high-risk and review-required findings.
 - Opt-in JSONL run logging for local evaluation workflows.
 - Seed eval runner with 50 curated examples.
+- Tests covering the CLI, API, policy loading, reports, documented examples,
+  eval runner, and opt-in logging behavior.
 - Makefile and Docker Compose paths for local development.
 
 ## Not in this MVP yet
