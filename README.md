@@ -15,6 +15,7 @@ platform approval or make definitive statutory violation determinations.
 
 - Python package with the `adlint scan` CLI.
 - FastAPI app with `GET /health`, `POST /analyze`, and `POST /eval`.
+- One-page Web UI at `/ui/` for the main local review workflow.
 - YAML policy files under `adlint/policies/`, plus custom policy paths.
 - Deterministic rule engine with policy-module, platform, and industry filters.
 - Transparent score thresholds for `approved`, `needs_review`, and `high_risk`.
@@ -28,7 +29,6 @@ platform approval or make definitive statutory violation determinations.
 
 ## Not in this MVP yet
 
-- Web UI.
 - A larger 200-500 example benchmark.
 - `scoring.yml` configurability; scoring weights currently live in Python.
 - SQLite or other durable storage; raw submissions are not persisted by
@@ -113,6 +113,12 @@ Start the API:
 
 ```bash
 make api
+```
+
+Open the local UI:
+
+```text
+http://127.0.0.1:8000/ui/
 ```
 
 Endpoints:

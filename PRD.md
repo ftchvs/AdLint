@@ -4,7 +4,7 @@ Version: 0.3 review draft
 Product: Open-source ad compliance and brand-safety preflight for growth teams
 Tagline: Preflight risk checks for ads, landing pages, and growth campaigns
 before launch.
-Status: MVP implemented for local CLI/API use; roadmap items are separated
+Status: MVP implemented for local CLI/API/Web UI use; roadmap items are separated
 from the shipped review target below.
 
 ## 1. Summary
@@ -20,9 +20,9 @@ compliant or guaranteed to pass platform review. It classifies creative as
 specific evidence and safer rewrite suggestions.
 
 The current MVP is local-first and policy-as-code-first. It runs as a Python
-package with a CLI, FastAPI service, importable analysis engine, YAML policy
-files, deterministic rules, transparent scoring, reports, rewrites, seed
-evals, documentation, and opt-in run logging.
+package with a CLI, FastAPI service, one-page Web UI, importable analysis
+engine, YAML policy files, deterministic rules, transparent scoring, reports,
+rewrites, seed evals, documentation, and opt-in run logging.
 
 ## 2. Current status
 
@@ -33,6 +33,9 @@ The review target includes:
 - CLI: `adlint scan <config>` accepts JSON or YAML ad configs, prints JSON or
   Markdown, can load custom policy paths, and can write reports to disk.
 - API: FastAPI exposes `/health`, `/analyze`, and `/eval`.
+- Web UI: `/ui/` provides a one-page local workflow for pasting ad copy,
+  selecting settings, analyzing through `/analyze`, reviewing results, copying
+  rewrites, and exporting JSON or Markdown.
 - Library mode: callers can import `adlint.engine.analyze`.
 - YAML policies: built-in policy files live in `adlint/policies/`, and users
   can load policy files or directories at runtime.
@@ -61,7 +64,6 @@ The review target includes:
 
 The following are not part of the implemented MVP review target:
 
-- Web UI for pasting copy, selecting settings, and browsing reports.
 - A 200-500 example benchmark with confusion matrices and reviewed failure
   modes.
 - `scoring.yml` configurability for thresholds and weights.
@@ -395,7 +397,7 @@ Representative output shape:
 | FR-15 | Implemented | HIPAA and privacy flags are labeled `requires_review`, not definitive violations. |
 | FR-16 | Implemented | Users can enable or disable policy modules through `policy_modules`. |
 | FR-17 | Implemented | `make dev`, `make scan`, `make api`, `make eval`, and `make test` provide local run paths. |
-| FR-18 | Future | A Web UI will let users paste copy, select settings, and browse/export reports. |
+| FR-18 | Implemented | A one-page Web UI lets users paste copy, select settings, analyze through the existing API, review results, copy rewrites, and export JSON or Markdown. |
 | FR-19 | Future | `scoring.yml` will let teams tune thresholds and weights without code changes. |
 | FR-20 | Future | SQLite storage may support eval datasets, run metadata, and anonymized logs. |
 
@@ -478,7 +480,7 @@ Implemented MVP stack:
 
 Roadmap architecture:
 
-- Frontend: lightweight Web UI.
+- Frontend: lightweight static Web UI served by FastAPI.
 - Scraping: Playwright for JavaScript-enabled pages, with `trafilatura` as a
   static extraction fallback.
 - Storage: SQLite for eval datasets, run metadata, and optional anonymized logs.
@@ -619,7 +621,7 @@ Future benchmark reports should include:
 - Add focused tests for CLI output, reports, policy loading, documented
   examples, eval runner metrics, and opt-in logging boundaries.
 
-### Phase 3: Web UI
+### Phase 3: Web UI - implemented
 
 - Paste ad copy and metadata.
 - Add landing page URL or HTML.
@@ -627,6 +629,8 @@ Future benchmark reports should include:
 - View detailed report and rewrites.
 - Export Markdown and JSON.
 - Copy safer rewrites.
+- Keep raw submission storage out of scope; the UI calls `/analyze` without
+  adding history or persistence.
 
 ### Phase 4: Evals and benchmark
 
@@ -662,6 +666,7 @@ AdLint/
     rules/
     scoring/
     scrapers/
+    static/
     api.py
     audit_log.py
     cli.py
@@ -684,8 +689,8 @@ AdLint/
   pyproject.toml
 ```
 
-Future directories may include Web UI code, SQLite-backed storage migrations,
-and persisted eval results.
+Future directories may include SQLite-backed storage migrations and persisted
+eval results.
 
 ## 17. Success criteria
 
