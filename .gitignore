@@ -5,3 +5,5 @@ __pycache__/
 reports/
 logs/
 evals/results/*.json
+evals/results/*.md
+docs/build/

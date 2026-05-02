@@ -6,26 +6,135 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+from adlint.classifiers.ollama import classify_with_ollama
 from adlint.engine import analyze
+from adlint.models import PolicyHit, Submission
+from adlint.policy import load_policies
+from adlint.scoring.core import decision_for_score, score_hits
+
+
+DECISION_LABELS = ("approved", "needs_review", "high_risk")
+DECISION_ORDER = {label: index for index, label in enumerate(DECISION_LABELS)}
+
+
+class _EvalResult:
+    def __init__(self, *, decision: str, policy_hits: list[PolicyHit], model: dict[str, Any]) -> None:
+        self.decision = decision
+        self.policy_hits = policy_hits
+        self.model = model
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run AdLint seed evals.")
+    parser = argparse.ArgumentParser(description="Run AdLint evals.")
     parser.add_argument("dataset", help="JSONL dataset with input and expected labels.")
+    parser.add_argument(
+        "--mode",
+        choices=("rule-only", "model-only", "hybrid", "all"),
+        default="rule-only",
+        help="Evaluation mode. Model-only is eval-only and never used by production scan.",
+    )
     parser.add_argument("--output", help="Optional JSON metrics output path.")
+    parser.add_argument("--markdown-output", help="Optional Markdown metrics output path.")
+    parser.add_argument("--ollama-model", help="Ollama model name for model-only or hybrid evals.")
+    parser.add_argument(
+        "--limit",
+        type=_positive_int,
+        help="Limit the run to the first N dataset rows. Useful for local model smoke checks.",
+    )
+    parser.add_argument(
+        "--require-model",
+        action="store_true",
+        help="Fail when model-only or hybrid rows cannot run the requested local model.",
+    )
+    parser.add_argument(
+        "--min-decision-accuracy",
+        type=float,
+        default=0.7,
+        help="Minimum decision accuracy required for a zero exit code.",
+    )
+    parser.add_argument(
+        "--max-review-notes",
+        type=int,
+        default=25,
+        help="Maximum false-positive and false-negative notes to include.",
+    )
     args = parser.parse_args()
 
     rows = _load_rows(Path(args.dataset))
-    results = [_score_row(row) for row in rows]
-    metrics = _metrics(results)
+    if args.limit is not None:
+        rows = rows[: args.limit]
+    if args.mode == "all":
+        mode_metrics = {
+            mode: _run_eval(
+                rows,
+                mode=mode,
+                ollama_model=args.ollama_model,
+                max_review_notes=args.max_review_notes,
+            )
+            for mode in ("rule-only", "model-only", "hybrid")
+        }
+        metrics = {
+            "mode": "all",
+            "modes": mode_metrics,
+            "hybrid_value": _hybrid_value_metrics(mode_metrics, max_review_notes=args.max_review_notes),
+        }
+    else:
+        metrics = _run_eval(
+            rows,
+            mode=args.mode,
+            ollama_model=args.ollama_model,
+            max_review_notes=args.max_review_notes,
+        )
 
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json.dumps(metrics, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
+    if args.markdown_output:
+        markdown_path = Path(args.markdown_output)
+        markdown_path.parent.mkdir(parents=True, exist_ok=True)
+        markdown_path.write_text(_markdown_report(metrics), encoding="utf-8")
+
     print(json.dumps(metrics, indent=2, sort_keys=True))
-    return 0 if metrics["decision_accuracy"] >= 0.7 else 1
+    return 0 if _passes(metrics, min_accuracy=args.min_decision_accuracy, require_model=args.require_model) else 1
+
+
+def _positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return parsed
+
+
+def _run_eval(
+    rows: list[dict[str, Any]],
+    *,
+    mode: str = "rule-only",
+    ollama_model: str | None = None,
+    max_review_notes: int = 25,
+) -> dict[str, Any]:
+    policy_categories = _policy_categories()
+    results = [
+        _score_row(row, policy_categories=policy_categories, mode=mode, ollama_model=ollama_model)
+        for row in rows
+    ]
+    metrics = _metrics(results, max_review_notes=max_review_notes)
+    metrics["mode"] = mode
+    return metrics
+
+
+def _passes(metrics: dict[str, Any], *, min_accuracy: float, require_model: bool) -> bool:
+    if metrics.get("mode") == "all":
+        return all(
+            _passes(mode_metrics, min_accuracy=min_accuracy, require_model=require_model)
+            for mode_metrics in metrics["modes"].values()
+        )
+    if require_model and metrics.get("model_required_failures"):
+        return False
+    if metrics["total_examples"] == 0:
+        return not require_model
+    return metrics["decision_accuracy"] >= min_accuracy
 
 
 def _load_rows(path: Path) -> list[dict[str, Any]]:
@@ -40,64 +149,533 @@ def _load_rows(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def _score_row(row: dict[str, Any]) -> dict[str, Any]:
-    result = analyze(row["input"])
-    actual_policy_ids = {hit.policy_id for hit in result.policy_hits}
+def _score_row(
+    row: dict[str, Any],
+    *,
+    policy_categories: dict[str, str] | None = None,
+    mode: str = "rule-only",
+    ollama_model: str | None = None,
+) -> dict[str, Any]:
+    policy_categories = policy_categories or _policy_categories()
+    if mode == "model-only":
+        scored = _score_model_only(row, ollama_model=ollama_model)
+    else:
+        scored = _score_analyze(row, mode=mode, ollama_model=ollama_model)
+
+    if scored.get("skipped"):
+        return scored
+
+    result = scored["result"]
     expected_policy_ids = set(row.get("expected_policy_ids", []))
+    actual_policy_ids = {hit.policy_id for hit in result.policy_hits}
+    expected_categories = _expected_categories(row, expected_policy_ids, policy_categories)
+    actual_categories = {hit.category for hit in result.policy_hits}
+    actual_policy_categories = {hit.policy_id: hit.category for hit in result.policy_hits}
+    policy_evidence = {
+        hit.policy_id: [evidence.to_dict() for evidence in hit.evidence]
+        for hit in result.policy_hits
+    }
+
     return {
         "id": row.get("id"),
+        "mode": mode,
         "expected_decision": row["expected_decision"],
         "actual_decision": result.decision,
         "decision_match": row["expected_decision"] == result.decision,
+        "decision_error_type": _decision_error_type(row["expected_decision"], result.decision),
         "expected_policy_ids": sorted(expected_policy_ids),
         "actual_policy_ids": sorted(actual_policy_ids),
+        "expected_categories": sorted(expected_categories),
+        "actual_categories": sorted(actual_categories),
+        "actual_policy_categories": dict(sorted(actual_policy_categories.items())),
+        "model": result.model,
+        "policy_evidence": dict(sorted(policy_evidence.items())),
         "policy_true_positives": sorted(expected_policy_ids & actual_policy_ids),
         "policy_false_negatives": sorted(expected_policy_ids - actual_policy_ids),
         "policy_false_positives": sorted(actual_policy_ids - expected_policy_ids),
+        "category_true_positives": sorted(expected_categories & actual_categories),
+        "category_false_negatives": sorted(expected_categories - actual_categories),
+        "category_false_positives": sorted(actual_categories - expected_categories),
     }
 
 
-def _metrics(results: list[dict[str, Any]]) -> dict[str, Any]:
-    total = len(results)
-    decision_matches = sum(1 for item in results if item["decision_match"])
-    expected_by_policy: Counter[str] = Counter()
-    actual_by_policy: Counter[str] = Counter()
-    true_positive_by_policy: Counter[str] = Counter()
+def _score_analyze(row: dict[str, Any], *, mode: str, ollama_model: str | None) -> dict[str, Any]:
+    result = analyze(
+        row["input"],
+        enable_model=True if mode == "hybrid" else False,
+        ollama_model=ollama_model,
+    )
+    return {"result": result}
 
-    for item in results:
-        expected = set(item["expected_policy_ids"])
-        actual = set(item["actual_policy_ids"])
-        for policy_id in expected:
-            expected_by_policy[policy_id] += 1
-        for policy_id in actual:
-            actual_by_policy[policy_id] += 1
-        for policy_id in expected & actual:
-            true_positive_by_policy[policy_id] += 1
 
-    policy_metrics: dict[str, dict[str, float]] = {}
-    for policy_id in sorted(set(expected_by_policy) | set(actual_by_policy)):
-        tp = true_positive_by_policy[policy_id]
-        precision = tp / actual_by_policy[policy_id] if actual_by_policy[policy_id] else 0.0
-        recall = tp / expected_by_policy[policy_id] if expected_by_policy[policy_id] else 0.0
-        policy_metrics[policy_id] = {
-            "precision": round(precision, 3),
-            "recall": round(recall, 3),
-            "expected_count": expected_by_policy[policy_id],
-            "actual_count": actual_by_policy[policy_id],
+def _score_model_only(row: dict[str, Any], *, ollama_model: str | None) -> dict[str, Any]:
+    submission = Submission.from_dict(row["input"])
+    model_hits, model_info = classify_with_ollama(submission, model=ollama_model)
+    if model_info.get("status") != "ok":
+        return {
+            "id": row.get("id"),
+            "mode": "model-only",
+            "skipped": True,
+            "skip_reason": model_info.get("reason") or model_info.get("status"),
+            "model": model_info,
         }
 
+    risk_score = score_hits(model_hits, submission)
+    return {
+        "result": _EvalResult(
+            decision=decision_for_score(risk_score),
+            policy_hits=model_hits,
+            model=model_info,
+        )
+    }
+
+
+def _metrics(results: list[dict[str, Any]], *, max_review_notes: int = 25) -> dict[str, Any]:
+    scored_results = [item for item in results if not item.get("skipped")]
+    skipped_results = [item for item in results if item.get("skipped")]
+    total = len(scored_results)
+    decision_matches = sum(1 for item in scored_results if item["decision_match"])
+
     misses_by_decision: dict[str, int] = defaultdict(int)
-    for item in results:
+    for item in scored_results:
         if not item["decision_match"]:
             misses_by_decision[item["expected_decision"]] += 1
 
     return {
+        "input_examples": len(results),
         "total_examples": total,
+        "skipped_examples": len(skipped_results),
         "decision_accuracy": round(decision_matches / total, 3) if total else 0.0,
+        "confusion_matrix": _confusion_matrix(scored_results),
+        "decision_metrics": _decision_metrics(scored_results),
         "misses_by_expected_decision": dict(sorted(misses_by_decision.items())),
-        "policy_metrics": policy_metrics,
+        "policy_metrics": _label_metrics(scored_results, "expected_policy_ids", "actual_policy_ids"),
+        "category_metrics": _label_metrics(scored_results, "expected_categories", "actual_categories"),
+        "model_status_counts": _model_status_counts(results),
+        "model_required_failures": _model_required_failures(results),
+        "review_notes": _review_notes(scored_results, max_notes=max_review_notes),
         "results": results,
     }
+
+
+def _hybrid_value_metrics(
+    modes: dict[str, dict[str, Any]],
+    *,
+    max_review_notes: int = 25,
+) -> dict[str, Any]:
+    rule_results = _results_by_id(modes.get("rule-only", {}))
+    model_results = _results_by_id(modes.get("model-only", {}))
+    hybrid_results = _results_by_id(modes.get("hybrid", {}))
+    row_ids = sorted(set(rule_results) & set(hybrid_results))
+
+    decision_improvements: list[dict[str, Any]] = []
+    decision_regressions: list[dict[str, Any]] = []
+    model_added_notes: list[dict[str, Any]] = []
+    model_removed_notes: list[dict[str, Any]] = []
+
+    model_ok_rows = 0
+    model_unavailable_rows = 0
+    decision_changed_count = 0
+    model_added_policy_hit_count = 0
+    model_added_expected_policy_hit_count = 0
+    model_added_false_positive_policy_hit_count = 0
+    model_removed_policy_hit_count = 0
+    model_rescued_policy_false_negative_count = 0
+    rows_with_model_added_findings = 0
+    rows_with_model_added_expected_findings = 0
+    rows_with_model_added_false_positives = 0
+
+    for row_id in row_ids:
+        rule = rule_results[row_id]
+        hybrid = hybrid_results[row_id]
+        model_status = str(hybrid.get("model", {}).get("status", "unknown"))
+        if model_status == "ok":
+            model_ok_rows += 1
+        elif model_status not in {"disabled", "unknown"}:
+            model_unavailable_rows += 1
+
+        if rule["actual_decision"] != hybrid["actual_decision"]:
+            decision_changed_count += 1
+        if not rule["decision_match"] and hybrid["decision_match"]:
+            decision_improvements.append(_decision_delta_note(row_id, rule, hybrid))
+        if rule["decision_match"] and not hybrid["decision_match"]:
+            decision_regressions.append(_decision_delta_note(row_id, rule, hybrid))
+
+        rule_policy_ids = set(rule["actual_policy_ids"])
+        hybrid_policy_ids = set(hybrid["actual_policy_ids"])
+        expected_policy_ids = set(hybrid["expected_policy_ids"])
+        added_policy_ids = sorted(hybrid_policy_ids - rule_policy_ids)
+        removed_policy_ids = sorted(rule_policy_ids - hybrid_policy_ids)
+        added_expected_policy_ids = sorted(set(added_policy_ids) & expected_policy_ids)
+        added_false_positive_policy_ids = sorted(set(added_policy_ids) - expected_policy_ids)
+        rescued_policy_ids = sorted((expected_policy_ids - rule_policy_ids) & hybrid_policy_ids)
+
+        model_added_policy_hit_count += len(added_policy_ids)
+        model_added_expected_policy_hit_count += len(added_expected_policy_ids)
+        model_added_false_positive_policy_hit_count += len(added_false_positive_policy_ids)
+        model_removed_policy_hit_count += len(removed_policy_ids)
+        model_rescued_policy_false_negative_count += len(rescued_policy_ids)
+
+        if added_policy_ids:
+            rows_with_model_added_findings += 1
+            if added_expected_policy_ids:
+                rows_with_model_added_expected_findings += 1
+            if added_false_positive_policy_ids:
+                rows_with_model_added_false_positives += 1
+            if len(model_added_notes) < max_review_notes:
+                model_added_notes.append(
+                    {
+                        "row_id": row_id,
+                        "model_status": model_status,
+                        "rule_decision": rule["actual_decision"],
+                        "hybrid_decision": hybrid["actual_decision"],
+                        "added_policy_ids": added_policy_ids,
+                        "added_expected_policy_ids": added_expected_policy_ids,
+                        "added_false_positive_policy_ids": added_false_positive_policy_ids,
+                    }
+                )
+        if removed_policy_ids and len(model_removed_notes) < max_review_notes:
+            model_removed_notes.append(
+                {
+                    "row_id": row_id,
+                    "rule_decision": rule["actual_decision"],
+                    "hybrid_decision": hybrid["actual_decision"],
+                    "removed_policy_ids": removed_policy_ids,
+                }
+            )
+
+    model_only_scored = [item for item in model_results.values() if not item.get("skipped")]
+    model_only_undercalls = sum(1 for item in model_only_scored if item.get("decision_error_type") == "undercall")
+    model_only_overcalls = sum(1 for item in model_only_scored if item.get("decision_error_type") == "overcall")
+
+    return {
+        "comparable_rows": len(row_ids),
+        "rule_decision_accuracy": modes.get("rule-only", {}).get("decision_accuracy", 0.0),
+        "model_only_decision_accuracy": modes.get("model-only", {}).get("decision_accuracy", 0.0),
+        "hybrid_decision_accuracy": modes.get("hybrid", {}).get("decision_accuracy", 0.0),
+        "hybrid_vs_rule_decision_accuracy_delta": round(
+            float(modes.get("hybrid", {}).get("decision_accuracy", 0.0))
+            - float(modes.get("rule-only", {}).get("decision_accuracy", 0.0)),
+            3,
+        ),
+        "model_ok_rows": model_ok_rows,
+        "model_unavailable_rows": model_unavailable_rows,
+        "decision_changed_count": decision_changed_count,
+        "decision_improvement_count": len(decision_improvements),
+        "decision_regression_count": len(decision_regressions),
+        "model_only_undercall_count": model_only_undercalls,
+        "model_only_overcall_count": model_only_overcalls,
+        "rows_with_model_added_findings": rows_with_model_added_findings,
+        "rows_with_model_added_expected_findings": rows_with_model_added_expected_findings,
+        "rows_with_model_added_false_positives": rows_with_model_added_false_positives,
+        "model_added_policy_hit_count": model_added_policy_hit_count,
+        "model_added_expected_policy_hit_count": model_added_expected_policy_hit_count,
+        "model_added_false_positive_policy_hit_count": model_added_false_positive_policy_hit_count,
+        "model_removed_policy_hit_count": model_removed_policy_hit_count,
+        "model_rescued_policy_false_negative_count": model_rescued_policy_false_negative_count,
+        "review_notes": {
+            "decision_improvements": decision_improvements[:max_review_notes],
+            "decision_regressions": decision_regressions[:max_review_notes],
+            "model_added_findings": model_added_notes,
+            "model_removed_findings": model_removed_notes,
+        },
+    }
+
+
+def _results_by_id(metrics: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {
+        str(item.get("id")): item
+        for item in metrics.get("results", [])
+        if item.get("id") is not None and not item.get("skipped")
+    }
+
+
+def _decision_delta_note(row_id: str, rule: dict[str, Any], hybrid: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "row_id": row_id,
+        "expected_decision": hybrid["expected_decision"],
+        "rule_decision": rule["actual_decision"],
+        "hybrid_decision": hybrid["actual_decision"],
+        "rule_error_type": rule["decision_error_type"],
+        "hybrid_error_type": hybrid["decision_error_type"],
+    }
+
+
+def _policy_categories() -> dict[str, str]:
+    return {policy.id: policy.category for policy in load_policies()}
+
+
+def _model_status_counts(results: list[dict[str, Any]]) -> dict[str, int]:
+    counts: Counter[str] = Counter()
+    for item in results:
+        model_info = item.get("model")
+        if not model_info:
+            continue
+        counts[str(model_info.get("status", "unknown"))] += 1
+    return dict(sorted(counts.items()))
+
+
+def _model_required_failures(results: list[dict[str, Any]]) -> int:
+    failures = 0
+    for item in results:
+        model_info = item.get("model")
+        if not model_info:
+            continue
+        status = model_info.get("status")
+        if status not in {"ok", "disabled"}:
+            failures += 1
+    return failures
+
+
+def _expected_categories(
+    row: dict[str, Any],
+    expected_policy_ids: set[str],
+    policy_categories: dict[str, str],
+) -> set[str]:
+    explicit_categories = row.get("expected_categories", [])
+    if explicit_categories:
+        return {str(category) for category in explicit_categories}
+    return {policy_categories.get(policy_id, "unknown") for policy_id in expected_policy_ids}
+
+
+def _decision_error_type(expected: str, actual: str) -> str | None:
+    if expected == actual:
+        return None
+    expected_order = DECISION_ORDER.get(expected, -1)
+    actual_order = DECISION_ORDER.get(actual, -1)
+    if expected_order == -1 or actual_order == -1:
+        return "mismatch"
+    return "overcall" if actual_order > expected_order else "undercall"
+
+
+def _decision_labels(results: list[dict[str, Any]]) -> list[str]:
+    labels = set(DECISION_LABELS)
+    for item in results:
+        labels.add(item["expected_decision"])
+        labels.add(item["actual_decision"])
+    return [label for label in DECISION_LABELS if label in labels] + sorted(labels - set(DECISION_LABELS))
+
+
+def _confusion_matrix(results: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+    labels = _decision_labels(results)
+    matrix = {expected: {actual: 0 for actual in labels} for expected in labels}
+    for item in results:
+        matrix[item["expected_decision"]][item["actual_decision"]] += 1
+    return matrix
+
+
+def _decision_metrics(results: list[dict[str, Any]]) -> dict[str, dict[str, float | int]]:
+    labels = _decision_labels(results)
+    matrix = _confusion_matrix(results)
+    metrics: dict[str, dict[str, float | int]] = {}
+    for label in labels:
+        tp = matrix[label][label]
+        expected_count = sum(matrix[label].values())
+        actual_count = sum(matrix[expected][label] for expected in labels)
+        precision = tp / actual_count if actual_count else 0.0
+        recall = tp / expected_count if expected_count else 0.0
+        metrics[label] = {
+            "precision": round(precision, 3),
+            "recall": round(recall, 3),
+            "expected_count": expected_count,
+            "actual_count": actual_count,
+            "true_positive_count": tp,
+            "false_positive_count": actual_count - tp,
+            "false_negative_count": expected_count - tp,
+        }
+    return metrics
+
+
+def _label_metrics(
+    results: list[dict[str, Any]],
+    expected_key: str,
+    actual_key: str,
+) -> dict[str, dict[str, float | int]]:
+    expected_by_label: Counter[str] = Counter()
+    actual_by_label: Counter[str] = Counter()
+    true_positive_by_label: Counter[str] = Counter()
+    false_positive_by_label: Counter[str] = Counter()
+    false_negative_by_label: Counter[str] = Counter()
+
+    for item in results:
+        expected = set(item[expected_key])
+        actual = set(item[actual_key])
+        for label in expected:
+            expected_by_label[label] += 1
+        for label in actual:
+            actual_by_label[label] += 1
+        for label in expected & actual:
+            true_positive_by_label[label] += 1
+        for label in actual - expected:
+            false_positive_by_label[label] += 1
+        for label in expected - actual:
+            false_negative_by_label[label] += 1
+
+    label_metrics: dict[str, dict[str, float | int]] = {}
+    for label in sorted(set(expected_by_label) | set(actual_by_label)):
+        tp = true_positive_by_label[label]
+        precision = tp / actual_by_label[label] if actual_by_label[label] else 0.0
+        recall = tp / expected_by_label[label] if expected_by_label[label] else 0.0
+        label_metrics[label] = {
+            "precision": round(precision, 3),
+            "recall": round(recall, 3),
+            "expected_count": expected_by_label[label],
+            "actual_count": actual_by_label[label],
+            "true_positive_count": tp,
+            "false_positive_count": false_positive_by_label[label],
+            "false_negative_count": false_negative_by_label[label],
+        }
+    return label_metrics
+
+
+def _review_notes(results: list[dict[str, Any]], *, max_notes: int = 25) -> dict[str, list[dict[str, Any]]]:
+    decision_mismatches: list[dict[str, Any]] = []
+    false_positives: list[dict[str, Any]] = []
+    false_negatives: list[dict[str, Any]] = []
+
+    for item in results:
+        if not item["decision_match"] and len(decision_mismatches) < max_notes:
+            decision_mismatches.append(
+                {
+                    "type": "decision_mismatch",
+                    "row_id": item["id"],
+                    "expected_decision": item["expected_decision"],
+                    "actual_decision": item["actual_decision"],
+                    "decision_error_type": item["decision_error_type"],
+                    "note": "Review whether scoring thresholds or the benchmark decision label need adjustment.",
+                }
+            )
+
+        for policy_id in item["policy_false_positives"]:
+            if len(false_positives) >= max_notes:
+                break
+            false_positives.append(
+                {
+                    "type": "policy_false_positive",
+                    "row_id": item["id"],
+                    "policy_id": policy_id,
+                    "category": item["actual_policy_categories"].get(policy_id, "unknown"),
+                    "evidence": item["policy_evidence"].get(policy_id, []),
+                    "note": "Actual hit is not in expected_policy_ids; review whether the rule is overbroad or the benchmark label is incomplete.",
+                }
+            )
+
+        for policy_id in item["policy_false_negatives"]:
+            if len(false_negatives) >= max_notes:
+                break
+            false_negatives.append(
+                {
+                    "type": "policy_false_negative",
+                    "row_id": item["id"],
+                    "policy_id": policy_id,
+                    "note": "Expected policy did not fire; review whether the rule needs a signal or the benchmark label is too broad.",
+                }
+            )
+
+    return {
+        "decision_mismatches": decision_mismatches,
+        "false_positives": false_positives,
+        "false_negatives": false_negatives,
+    }
+
+
+def _markdown_report(metrics: dict[str, Any]) -> str:
+    if metrics.get("mode") == "all":
+        lines = ["# AdLint Eval Report", ""]
+        for mode, mode_metrics in metrics["modes"].items():
+            lines.extend([f"## {mode}", ""])
+            lines.extend(_markdown_report(mode_metrics).splitlines()[2:])
+            lines.append("")
+        if metrics.get("hybrid_value"):
+            lines.extend(_markdown_hybrid_value(metrics["hybrid_value"]))
+        return "\n".join(lines)
+
+    lines = [
+        "# AdLint Eval Report",
+        "",
+        f"- Mode: {metrics.get('mode', 'rule-only')}",
+        f"- Input examples: {metrics['input_examples']}",
+        f"- Total examples: {metrics['total_examples']}",
+        f"- Skipped examples: {metrics['skipped_examples']}",
+        f"- Decision accuracy: {metrics['decision_accuracy']:.3f}",
+        f"- Model status counts: {metrics['model_status_counts']}",
+        "",
+        "## Confusion Matrix",
+        "",
+    ]
+    labels = list(metrics["confusion_matrix"].keys())
+    lines.append("| Expected \\ Actual | " + " | ".join(labels) + " |")
+    lines.append("| --- | " + " | ".join("---" for _ in labels) + " |")
+    for expected, actual_counts in metrics["confusion_matrix"].items():
+        counts = [str(actual_counts.get(actual, 0)) for actual in labels]
+        lines.append("| " + expected + " | " + " | ".join(counts) + " |")
+
+    lines.extend(["", "## Review Notes", ""])
+    notes = metrics["review_notes"]
+    for heading, key in (
+        ("Decision Mismatches", "decision_mismatches"),
+        ("False Positives", "false_positives"),
+        ("False Negatives", "false_negatives"),
+    ):
+        lines.extend([f"### {heading}", ""])
+        if not notes[key]:
+            lines.append("- None in the included note window.")
+            lines.append("")
+            continue
+        for note in notes[key]:
+            label = note.get("policy_id") or note.get("decision_error_type")
+            lines.append(f"- `{note['row_id']}` `{label}`: {note['note']}")
+        lines.append("")
+
+    lines.extend(
+        [
+            "This benchmark is decision-support regression coverage for AdLint's policy-as-code engine.",
+            "It is not a legal compliance certification or platform approval guarantee.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _markdown_hybrid_value(value: dict[str, Any]) -> list[str]:
+    lines = [
+        "## Hybrid Value",
+        "",
+        "| Metric | Value |",
+        "| --- | ---: |",
+    ]
+    for label, key in (
+        ("Comparable rows", "comparable_rows"),
+        ("Rule decision accuracy", "rule_decision_accuracy"),
+        ("Model-only decision accuracy", "model_only_decision_accuracy"),
+        ("Hybrid decision accuracy", "hybrid_decision_accuracy"),
+        ("Hybrid minus rule accuracy delta", "hybrid_vs_rule_decision_accuracy_delta"),
+        ("Model OK rows", "model_ok_rows"),
+        ("Model unavailable rows", "model_unavailable_rows"),
+        ("Decision improvements", "decision_improvement_count"),
+        ("Decision regressions", "decision_regression_count"),
+        ("Model-only undercalls", "model_only_undercall_count"),
+        ("Model-only overcalls", "model_only_overcall_count"),
+        ("Rows with model-added findings", "rows_with_model_added_findings"),
+        ("Model-added expected policy hits", "model_added_expected_policy_hit_count"),
+        ("Model-added false-positive policy hits", "model_added_false_positive_policy_hit_count"),
+        ("Model-rescued policy false negatives", "model_rescued_policy_false_negative_count"),
+    ):
+        lines.append(f"| {label} | {value.get(key, 0)} |")
+
+    lines.extend(["", "### Model-added finding notes", ""])
+    added_notes = value.get("review_notes", {}).get("model_added_findings", [])
+    if not added_notes:
+        lines.append("- None in the included note window.")
+    for note in added_notes:
+        added = ", ".join(note.get("added_policy_ids", [])) or "none"
+        false_positive = ", ".join(note.get("added_false_positive_policy_ids", [])) or "none"
+        lines.append(
+            f"- `{note['row_id']}` added `{added}`; "
+            f"not in labels: `{false_positive}`; model status `{note.get('model_status', 'unknown')}`."
+        )
+    lines.append("")
+    return lines
 
 
 if __name__ == "__main__":

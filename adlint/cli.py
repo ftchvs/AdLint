@@ -35,7 +35,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     scan_parser.add_argument(
         "--ollama-model",
-        help="Ollama model name, defaulting to ADLINT_OLLAMA_MODEL or gpt-oss-safeguard-20b.",
+        help="Ollama model name, defaulting to ADLINT_OLLAMA_MODEL or gpt-oss-safeguard:20b.",
     )
 
     args = parser.parse_args(argv)

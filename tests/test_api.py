@@ -1,11 +1,29 @@
 from __future__ import annotations
 
+import json
+from typing import Any
+
 from fastapi.testclient import TestClient
 
 from adlint.api import app
 
 
 client = TestClient(app)
+
+
+class FakeOllamaResponse:
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self.payload = payload
+        self.status = 200
+
+    def __enter__(self) -> "FakeOllamaResponse":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return json.dumps(self.payload).encode("utf-8")
 
 
 def high_risk_payload() -> dict[str, str]:
@@ -43,6 +61,70 @@ def test_analyze_accepts_valid_payload() -> None:
         "model",
         "logging_enabled",
     } <= payload.keys()
+
+
+def test_models_endpoint_returns_available_ollama_models(monkeypatch) -> None:
+    def fake_urlopen(request, timeout):
+        assert request.full_url == "http://localhost:11434/api/tags"
+        return FakeOllamaResponse({"models": [{"name": "llama3.2:latest"}]})
+
+    monkeypatch.delenv("ADLINT_OLLAMA_URL", raising=False)
+    monkeypatch.delenv("ADLINT_OLLAMA_MODEL", raising=False)
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    response = client.get("/models")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "provider": "ollama",
+        "endpoint": "http://localhost:11434/api/chat",
+        "default_model": "gpt-oss-safeguard:20b",
+        "status": "ok",
+        "models": ["llama3.2:latest"],
+    }
+
+
+def test_models_endpoint_returns_unavailable_reason(monkeypatch) -> None:
+    def fake_urlopen(request, timeout):
+        raise OSError("connection refused")
+
+    monkeypatch.delenv("ADLINT_OLLAMA_URL", raising=False)
+    monkeypatch.delenv("ADLINT_OLLAMA_MODEL", raising=False)
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    response = client.get("/models")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "unavailable"
+    assert response.json()["models"] == []
+    assert response.json()["reason"] == "connection refused"
+
+
+def test_analyze_forwards_model_enabled_and_accepts_model_name(monkeypatch) -> None:
+    seen = {}
+
+    def fake_analyze(config, *, enable_model=None, ollama_model=None):
+        seen["config"] = config
+        seen["enable_model"] = enable_model
+        seen["ollama_model"] = ollama_model
+
+        class Result:
+            def to_dict(self):
+                return {"model": {"enabled": enable_model}}
+
+        return Result()
+
+    monkeypatch.setattr("adlint.api.analyze", fake_analyze)
+
+    response = client.post(
+        "/analyze",
+        json={**high_risk_payload(), "model_enabled": True, "ollama_model": "llama3.2:latest"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"model": {"enabled": True}}
+    assert seen["enable_model"] is True
+    assert seen["ollama_model"] == "llama3.2:latest"
 
 
 def test_eval_accepts_labeled_examples() -> None:

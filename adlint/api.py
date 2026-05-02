@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
+from adlint.classifiers.ollama import list_local_models
 from adlint.engine import analyze
 
 
@@ -25,6 +26,7 @@ class AnalyzeRequest(BaseModel):
     policy_modules: list[str] = Field(default_factory=list)
     modules: list[str] | None = None
     model_enabled: bool = False
+    ollama_model: str | None = None
     logging_enabled: bool = False
     log_path: str | None = None
 
@@ -49,9 +51,18 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/models")
+def models_endpoint() -> dict[str, Any]:
+    return list_local_models()
+
+
 @app.post("/analyze")
 def analyze_endpoint(payload: AnalyzeRequest) -> dict[str, Any]:
-    return analyze(payload.to_analyze_config()).to_dict()
+    return analyze(
+        payload.to_analyze_config(),
+        enable_model=payload.model_enabled,
+        ollama_model=payload.ollama_model,
+    ).to_dict()
 
 
 @app.post("/eval")

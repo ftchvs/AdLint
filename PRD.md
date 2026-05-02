@@ -32,10 +32,11 @@ The review target includes:
 
 - CLI: `adlint scan <config>` accepts JSON or YAML ad configs, prints JSON or
   Markdown, can load custom policy paths, and can write reports to disk.
-- API: FastAPI exposes `/health`, `/analyze`, and `/eval`.
+- API: FastAPI exposes `/health`, `/models`, `/analyze`, and `/eval`.
 - Web UI: `/ui/` provides a one-page local workflow for pasting ad copy,
-  selecting settings, analyzing through `/analyze`, reviewing results, copying
-  rewrites, and exporting JSON or Markdown.
+  selecting settings, choosing a local model, analyzing through `/analyze`,
+  reviewing results, copying rewrites, and exporting JSON or Markdown. The
+  Local model toggle defaults on and can be turned off for rule-only analysis.
 - Library mode: callers can import `adlint.engine.analyze`.
 - YAML policies: built-in policy files live in `adlint/policies/`, and users
   can load policy files or directories at runtime.
@@ -70,8 +71,8 @@ The following are not part of the implemented MVP review target:
 - SQLite storage for eval datasets, run metadata, or anonymized logs.
 - Playwright or `trafilatura` extraction. The MVP uses a standard-library HTML
   parser and robots-aware URL fetching.
-- Verified live Ollama model runs. Optional Ollama integration exists, but the
-  MVP does not yet claim benchmarked local model quality.
+- Verified live Ollama model quality. Ollama integration exists for hybrid
+  decision support, but the MVP does not claim benchmarked local model quality.
 - Fine-tuning or adapter training.
 
 ## 3. Problem
@@ -120,7 +121,7 @@ then returns:
 - Machine-readable JSON report.
 - Human-readable Markdown report.
 - Landing-page extraction details and fetch errors when relevant.
-- Model status when optional Ollama classification is enabled.
+- Model status when Ollama classification is enabled or attempted.
 
 ## 6. Product principles
 
@@ -129,8 +130,8 @@ then returns:
   filters, and optional taxonomy mappings.
 - Explainable by default: every decision traces back to policy IDs, evidence
   strings, sources, severities, and recommended actions.
-- Local-first: the MVP runs locally without hosted services. Optional local
-  model calls use an Ollama-compatible endpoint.
+- Local-first: the MVP runs locally without hosted services. Local model calls
+  use an Ollama-compatible chat endpoint when enabled.
 - Privacy-conscious: raw submissions are not persisted by default. Health and
   privacy findings are labeled `requires_review`, not definitive legal
   violations.
@@ -386,18 +387,18 @@ Representative output shape:
 | FR-4 | Implemented | Users can select `google`, `tiktok`, or `linkedin` policy behavior through platform metadata. Meta is future work. |
 | FR-5 | Implemented | Users can select industries such as `health`, `wellness`, `finance`, `saas`, `creator`, or `general`. |
 | FR-6 | Implemented | Deterministic rule checks run first using policy signals, regexes, keyword patterns, and heuristics. |
-| FR-7 | Partial | Optional Ollama classification exists behind `model_enabled` or `--enable-model`; live model quality is not yet verified. |
+| FR-7 | Partial | Ollama classification can run as a hybrid pass behind `model_enabled` or `--enable-model`; deterministic rules always run, and live model quality is not yet benchmarked. |
 | FR-8 | Implemented | The system returns structured JSON and can generate Markdown reports. HTML reports are future work. |
 | FR-9 | Implemented | The system maps risky phrases to policy IDs, categories, severities, sources, and recommended actions. |
 | FR-10 | Implemented | The system suggests deterministic safer rewrites for high-risk or review-required hits where feasible. |
 | FR-11 | Implemented | The system supports custom YAML policy files loaded from built-in policies or configured paths. |
 | FR-12 | Implemented | The repo includes a seed eval runner and 50 labeled examples. |
-| FR-13 | Partial | The system can call an Ollama-compatible local model, but verified live model runs and benchmarks remain future work. |
+| FR-13 | Partial | The system can call an Ollama-compatible local model through `/api/chat` by default, with `ADLINT_OLLAMA_URL` controlling the endpoint; verified benchmarks remain future work. |
 | FR-14 | Implemented | Raw submissions are not persisted by default; users can enable JSONL logging for evaluation. |
 | FR-15 | Implemented | HIPAA and privacy flags are labeled `requires_review`, not definitive violations. |
 | FR-16 | Implemented | Users can enable or disable policy modules through `policy_modules`. |
 | FR-17 | Implemented | `make dev`, `make scan`, `make api`, `make eval`, and `make test` provide local run paths. |
-| FR-18 | Implemented | A one-page Web UI lets users paste copy, select settings, analyze through the existing API, review results, copy rewrites, and export JSON or Markdown. |
+| FR-18 | Implemented | A one-page Web UI lets users paste copy, select settings, choose a local model, keep the Local model toggle on by default or turn it off, analyze through the existing API, review results, copy rewrites, and export JSON or Markdown. |
 | FR-19 | Future | `scoring.yml` will let teams tune thresholds and weights without code changes. |
 | FR-20 | Future | SQLite storage may support eval datasets, run metadata, and anonymized logs. |
 
@@ -472,7 +473,8 @@ Implemented MVP stack:
   derived privacy-tracker checks.
 - Landing-page extraction: standard-library URL fetching, robots checks, and
   `HTMLParser` extraction.
-- Optional model runtime: Ollama-compatible `/api/generate` calls.
+- Local model runtime: Ollama-compatible `/api/chat` calls by default, with
+  `ADLINT_OLLAMA_URL` for endpoint overrides.
 - Scoring: code-defined severity and context weights.
 - Output: JSON result objects and Markdown reports.
 - Logging: opt-in JSONL run logs.
@@ -496,7 +498,7 @@ Input (ad + metadata)
   -> Landing page fetch or HTML parsing
   -> Tracker and pixel detection
   -> Rule-based checks
-  -> Optional local model classifier
+  -> Local model classifier when enabled
   -> Risk scoring
   -> Rewrite generation
   -> JSON and Markdown report
@@ -604,7 +606,7 @@ Future benchmark reports should include:
 - FastAPI `/analyze` and `/eval` endpoints.
 - Policy YAML loader.
 - Deterministic rule engine.
-- Optional Ollama-compatible model calls.
+- Ollama-compatible model calls for hybrid decision support.
 - Risk scoring.
 - JSON and Markdown reports.
 - Deterministic safer rewrites.
@@ -617,7 +619,7 @@ Future benchmark reports should include:
 - Keep README and PRD aligned with the actual MVP.
 - Validate local install, tests, CLI examples, API examples, and eval command.
 - Preserve the decision-support and legal-boundary language throughout docs.
-- Avoid claiming live model quality, production storage, or Web UI behavior.
+- Avoid claiming live model quality or production storage behavior.
 - Add focused tests for CLI output, reports, policy loading, documented
   examples, eval runner metrics, and opt-in logging boundaries.
 
@@ -626,6 +628,8 @@ Future benchmark reports should include:
 - Paste ad copy and metadata.
 - Add landing page URL or HTML.
 - Select platform, industry, and policy modules.
+- Select a local model and keep the Local model toggle on by default, with a
+  rule-only path when the toggle is off.
 - View detailed report and rewrites.
 - Export Markdown and JSON.
 - Copy safer rewrites.
@@ -640,7 +644,7 @@ Future benchmark reports should include:
 - Rule-only vs. model-only vs. hybrid comparison.
 - Public benchmark report in `docs/eval_report.md`.
 
-### Phase 5: Optional model validation and fine-tuning
+### Phase 5: Model validation and fine-tuning
 
 - Verify live Ollama model runs on supported local models.
 - Compare model-assisted classification against deterministic rules.

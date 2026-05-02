@@ -13,6 +13,7 @@ def to_markdown(result: AnalysisResult) -> str:
         f"- Decision: `{result.decision}`",
         f"- Risk score: `{result.risk_score:.2f}`",
         f"- Requires review: `{str(result.requires_review).lower()}`",
+        f"- Model status: `{_model_status(result.model)}`",
         "",
         "## Policy Hits",
         "",
@@ -95,6 +96,14 @@ def _append_landing_page_list(lines: list[str], label: str, values: tuple[str, .
     lines.append(f"- {label}:")
     for value in values:
         lines.append(f"  - {value}")
+
+
+def _model_status(model: dict[str, object]) -> str:
+    status = str(model.get("status") or "disabled")
+    selected_model = model.get("model") or model.get("name")
+    if selected_model:
+        return f"{status} ({selected_model})"
+    return status
 
 
 def write_reports(result: AnalysisResult, output_dir: str | Path) -> dict[str, str]:
