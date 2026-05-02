@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
 from adlint.engine import analyze
@@ -39,6 +41,7 @@ app = FastAPI(
     version="0.1.0",
     description="Local-first ad compliance and brand-safety preflight API.",
 )
+STATIC_DIR = Path(__file__).with_name("static")
 
 
 @app.get("/health")
@@ -88,3 +91,6 @@ def eval_endpoint(payload: EvalRequest) -> dict[str, Any]:
         "decision_accuracy": decision_accuracy,
         "results": results,
     }
+
+
+app.mount("/ui", StaticFiles(directory=STATIC_DIR, html=True), name="ui")

@@ -32,7 +32,7 @@ packages = ["adlint", "adlint.classifiers", "adlint.policies", "adlint.rewrites"
 include-package-data = true
 
 [tool.setuptools.package-data]
-adlint = ["policies/*.yml"]
+adlint = ["policies/*.yml", "static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

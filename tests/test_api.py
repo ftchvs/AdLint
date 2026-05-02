@@ -102,3 +102,49 @@ def test_eval_rejects_non_object_input() -> None:
     response = client.post("/eval", json={"examples": [{"input": "bad"}]})
 
     assert response.status_code == 422
+
+
+def test_ui_serves_static_page() -> None:
+    response = client.get("/ui/")
+
+    assert response.status_code == 200
+    assert "AdLint" in response.text
+    assert "decision-support" in response.text
+    assert "not legal advice" in response.text
+
+
+def test_ui_assets_are_served() -> None:
+    js_response = client.get("/ui/app.js")
+    css_response = client.get("/ui/styles.css")
+
+    assert js_response.status_code == 200
+    assert css_response.status_code == 200
+    assert 'fetch("/analyze"' in js_response.text
+    assert "logging_enabled: true" not in js_response.text
+    assert ".result-panel" in css_response.text
+
+
+def test_analyze_accepts_ui_payload_shape() -> None:
+    response = client.post(
+        "/analyze",
+        json={
+            "platform": "google",
+            "industry": "wellness",
+            "headline": "A calmer routine for better sleep",
+            "body": "Join our wellness newsletter for science-backed sleep tips.",
+            "cta": "Sign up",
+            "policy_modules": ["health_claims", "platform", "privacy", "landing_page"],
+            "landing_page_html": "<html><head><title>Sleep newsletter</title></head><body><h1>Simple sleep tips</h1><form><label>Email signup</label><input name='email'></form></body></html>",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert {
+        "landing_page",
+        "policy_hits",
+        "recommended_actions",
+        "safer_rewrites",
+    } <= payload.keys()
+    assert payload["landing_page"]["title"] == "Sleep newsletter"
+    assert payload["landing_page"]["forms"] == ["Email signup, email"]
