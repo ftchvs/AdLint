@@ -1,23 +1,25 @@
 PYTHON ?= python3
 VENV := .venv
 BIN := $(VENV)/bin
+STAMP := $(VENV)/.installed
 
 .PHONY: dev scan eval test install
 
-install: $(BIN)/python
+install: $(STAMP)
 
-$(BIN)/python: pyproject.toml
+$(STAMP): pyproject.toml
 	$(PYTHON) -m venv $(VENV)
 	$(BIN)/python -m pip install -e ".[dev]"
+	touch $(STAMP)
 
-dev: $(BIN)/python
+dev: $(STAMP)
 	$(BIN)/python -m adlint scan examples/high_risk_tiktok_health.json --output-dir reports
 
-scan: $(BIN)/python
+scan: $(STAMP)
 	$(BIN)/python -m adlint scan examples/needs_review_google_wellness.json
 
-eval: $(BIN)/python
+eval: $(STAMP)
 	$(BIN)/python evals/run_eval.py evals/datasets/seed_ads.jsonl --output evals/results/latest.json
 
-test: $(BIN)/python
+test: $(STAMP)
 	$(BIN)/python -m pytest
