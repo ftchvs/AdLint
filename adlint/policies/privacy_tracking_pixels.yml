@@ -1,0 +1,33 @@
+policies:
+  - id: tracking_pixel_risk
+    severity: medium
+    category: privacy
+    description: Tracking pixels on health-adjacent pages can require consent and disclosure review.
+    modules: [privacy]
+    industries: [health, wellness]
+    requires_review: true
+    signals:
+      - meta pixel
+      - facebook pixel
+      - google analytics
+      - google tag manager
+      - tiktok pixel
+      - linkedin insight tag
+    recommended_action: Review consent, tracking, disclosure, and data-sharing paths.
+    rewrite_strategy: add_review_reminder
+
+  - id: health_form_tracking_risk
+    severity: medium
+    category: privacy
+    description: Health forms paired with trackers can create elevated privacy-review risk.
+    modules: [privacy]
+    industries: [health, wellness]
+    requires_review: true
+    signals:
+      - health quiz
+      - symptoms
+      - intake form
+      - book appointment
+      - email signup
+    recommended_action: Review form fields, tracking events, consent, and data-sharing controls.
+    rewrite_strategy: add_review_reminder

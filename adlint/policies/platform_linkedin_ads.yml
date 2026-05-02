@@ -1,0 +1,48 @@
+policies:
+  - id: linkedin_sensitive_targeting
+    severity: high
+    category: platform_policy
+    description: Sensitive targeting in employment, housing, credit, or health contexts needs review.
+    modules: [platform]
+    platforms: [linkedin]
+    signals:
+      - age
+      - young professionals only
+      - recent graduates only
+      - disability
+      - medical condition
+      - pregnancy
+      - religion
+      - ethnicity
+    recommended_action: Review targeting, exclusions, and copy for sensitive-attribute implications.
+    rewrite_strategy: neutral_targeting
+
+  - id: linkedin_discrimination_risk
+    severity: high
+    category: platform_policy
+    description: Employment, housing, and credit ads should avoid exclusionary language.
+    modules: [platform]
+    platforms: [linkedin]
+    industries: [finance, saas, general]
+    signals:
+      - young professionals only
+      - recent graduates only
+      - no experience required for women
+      - must be native speaker
+    recommended_action: Remove protected-class or exclusionary targeting language.
+    rewrite_strategy: neutral_targeting
+
+  - id: linkedin_professional_claim_review
+    severity: high
+    category: platform_policy
+    description: Professional performance or income promises should be qualified.
+    modules: [platform]
+    platforms: [linkedin]
+    industries: [saas, finance, creator, general]
+    signals:
+      - guaranteed promotion
+      - double your salary
+      - get hired instantly
+      - 10x productivity
+    recommended_action: Clarify basis for professional outcome claims.
+    rewrite_strategy: qualify_claim

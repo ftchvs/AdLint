@@ -1,9 +1,11 @@
 # AdLint PRD
 
-Version: 0.2 draft
+Version: 0.3 review draft
 Product: Open-source ad compliance and brand-safety preflight for growth teams
 Tagline: Preflight risk checks for ads, landing pages, and growth campaigns
 before launch.
+Status: MVP implemented for local CLI/API use; roadmap items are separated
+from the shipped review target below.
 
 ## 1. Summary
 
@@ -12,15 +14,62 @@ landing pages before launch. It flags risky claims, missing disclosures,
 platform-policy concerns, health/privacy review triggers, landing-page
 mismatches, and brand-safety risks.
 
-AdLint is decision-support software. It should not claim that an ad is legally
-compliant or guaranteed to pass platform review. It should classify creative as
-`approved`, `needs_review`, or `high_risk`, then explain the decision with
+AdLint is decision-support software. It must not claim that an ad is legally
+compliant or guaranteed to pass platform review. It classifies creative as
+`approved`, `needs_review`, or `high_risk`, then explains the decision with
 specific evidence and safer rewrite suggestions.
 
-The first release should be local-first, policy-as-code-first, and easy to run
-from developer and marketing operations workflows.
+The current MVP is local-first and policy-as-code-first. It runs as a Python
+package with a CLI, FastAPI service, importable analysis engine, YAML policy
+files, deterministic rules, transparent scoring, reports, rewrites, seed
+evals, documentation, and opt-in run logging.
 
-## 2. Problem
+## 2. Current status
+
+### 2.1 Implemented MVP
+
+The review target includes:
+
+- CLI: `adlint scan <config>` accepts JSON or YAML ad configs, prints JSON or
+  Markdown, can load custom policy paths, and can write reports to disk.
+- API: FastAPI exposes `/health`, `/analyze`, and `/eval`.
+- Library mode: callers can import `adlint.engine.analyze`.
+- YAML policies: built-in policy files live in `adlint/policies/`, and users
+  can load policy files or directories at runtime.
+- Policy filtering: policies can be filtered by module, platform, and industry.
+- Deterministic rules: signal matching, negation handling, landing-page offer
+  mismatch checks, and health-adjacent tracking-pixel review flags are
+  implemented.
+- Scoring: risk scores and decisions are computed with transparent severity,
+  evidence, regulated-industry, landing-page, privacy, and brand-safety weights.
+- Reports: JSON and Markdown reports include policy hits, evidence,
+  recommended actions, rewrites, landing-page details, and the decision-support
+  disclaimer.
+- Rewrites: deterministic safer rewrite suggestions are generated for high-risk
+  or review-required hits where feasible.
+- Seed evals: `evals/run_eval.py` scores the 50-example
+  `evals/datasets/seed_ads.jsonl` dataset.
+- Docs: setup, policy design, local model notes, eval status, and legal
+  boundary docs exist in the repo.
+- Opt-in logging: `logging_enabled` and `log_path` write JSONL run logs only
+  when explicitly enabled.
+
+### 2.2 Partial or future work
+
+The following are not part of the implemented MVP review target:
+
+- Web UI for pasting copy, selecting settings, and browsing reports.
+- A 200-500 example benchmark with confusion matrices and reviewed failure
+  modes.
+- `scoring.yml` configurability for thresholds and weights.
+- SQLite storage for eval datasets, run metadata, or anonymized logs.
+- Playwright or `trafilatura` extraction. The MVP uses a standard-library HTML
+  parser and robots-aware URL fetching.
+- Verified live Ollama model runs. Optional Ollama integration exists, but the
+  MVP does not yet claim benchmarked local model quality.
+- Fine-tuning or adapter training.
+
+## 3. Problem
 
 Growth teams ship creative quickly, but compliance and brand risk often appear
 late: during ad-platform review, after account-quality issues, during legal
@@ -32,10 +81,10 @@ about unsupported claims, missing disclosures, sensitive targeting,
 landing-page mismatch, health-data tracking, and unsafe content adjacency.
 
 Most existing tools are opaque, enterprise-priced, or disconnected from daily
-creative workflows. AdLint should provide an open-source, explainable,
-local-first alternative.
+creative workflows. AdLint provides an open-source, explainable, local-first
+alternative for preflight review.
 
-## 3. Target users
+## 4. Target users
 
 Primary users:
 
@@ -51,41 +100,46 @@ Secondary users:
 - Brand managers concerned with suitability and adjacency.
 - Engineers embedding campaign checks into CI, internal tools, or custom UIs.
 
-## 4. Core value proposition
+## 5. Core value proposition
 
-AdLint analyzes ad copy, landing pages, and campaign metadata, then returns:
+AdLint analyzes ad copy, optional landing-page content, and campaign metadata,
+then returns:
 
 - Decision: `approved`, `needs_review`, or `high_risk`.
 - Numeric risk score.
+- Enabled policy modules.
 - Policy categories triggered.
 - Exact evidence from the ad or page.
-- Required or recommended disclosures and mitigation steps.
+- Required or recommended mitigation steps.
 - Safer rewrites that preserve campaign intent while lowering risk.
 - Machine-readable JSON report.
 - Human-readable Markdown report.
+- Landing-page extraction details and fetch errors when relevant.
+- Model status when optional Ollama classification is enabled.
 
-## 5. Product principles
+## 6. Product principles
 
 - Policy-as-code first: policies live in version-controlled YAML with clear
-  IDs, severities, categories, signals, prompts, and recommended actions.
+  IDs, severities, categories, signals, prompts, recommended actions, module
+  filters, and optional taxonomy mappings.
 - Explainable by default: every decision traces back to policy IDs, evidence
-  strings, sources, severities, and model reasoning where applicable.
-- Local-first: the planned MVP should run with Ollama-compatible open-weight
-  models such as `gpt-oss-safeguard-20b`, `gpt-oss-20b`, or equivalent local
-  models.
+  strings, sources, severities, and recommended actions.
+- Local-first: the MVP runs locally without hosted services. Optional local
+  model calls use an Ollama-compatible endpoint.
 - Privacy-conscious: raw submissions are not persisted by default. Health and
-  privacy findings are labeled `requires_review`, not definitive violations.
-- Composable: CLI, API, and library modes should be first-class so teams can
-  plug AdLint into CI, internal tools, and future UIs.
+  privacy findings are labeled `requires_review`, not definitive legal
+  violations.
+- Composable: CLI, API, and library modes are first-class so teams can plug
+  AdLint into CI, internal tools, and future UIs.
 
-## 6. MVP scope
+## 7. Implemented MVP scope
 
-The MVP focuses on high-signal checks for health, wellness, finance, and
-adjacent sensitive categories.
+The MVP focuses on high-signal checks for health, wellness, finance, SaaS,
+creator disclosure, privacy, landing-page mismatch, and brand-safety scenarios.
 
-### 6.1 Ad claim risk
+### 7.1 Ad claim risk
 
-AdLint should detect unsupported, absolute, or extreme claims, including:
+AdLint detects unsupported, absolute, or extreme claims, including:
 
 - Guaranteed outcomes.
 - "Clinically proven" or "doctor recommended" language without substantiation.
@@ -94,24 +148,24 @@ AdLint should detect unsupported, absolute, or extreme claims, including:
 - Fake urgency or scarcity.
 - Absolute claims like "risk-free," "cure," "guaranteed," or "instant."
 
-### 6.2 Platform policy risk
+### 7.2 Platform policy risk
 
-Initial platform modules:
+Implemented platform modules:
 
-- Google Ads: health, misrepresentation, and restricted-category risk.
+- Google Ads: health, misrepresentation, restricted-category, and disclosure
+  risk.
 - TikTok Ads: misleading content, weight-management claims, and disclosure risk.
 - LinkedIn Ads: sensitive targeting, discrimination, and professional claims.
 
-Meta should be represented as `meta_later` in configuration and added after the
-core system is working.
+Meta remains a future platform module.
 
-### 6.3 Health privacy risk
+### 7.3 Health privacy risk
 
-AdLint should flag health or wellness landing pages that may require review
-because they combine sensitive health context with tracking pixels, ad platform
-scripts, identifiers, forms, conversion events, or unclear consent paths.
+AdLint flags health or wellness landing pages that may require review because
+they combine sensitive health context with tracking pixels, forms, conversion
+events, or unclear consent paths.
 
-Initial health/privacy modules:
+Implemented health/privacy modules include:
 
 - HIPAA marketing review triggers for covered-entity or business-associate
   contexts.
@@ -124,9 +178,9 @@ Initial health/privacy modules:
 All HIPAA/privacy findings must be marked as `requires_review`, not definitive
 legal violations.
 
-### 6.4 Brand safety and suitability
+### 7.4 Brand safety and suitability
 
-AdLint should classify campaign and page context using IAB-style sensitive-topic
+AdLint classifies campaign and page context using IAB-style sensitive-topic
 categories:
 
 - Adult content.
@@ -137,14 +191,31 @@ categories:
 - Sensitive social issues.
 - Unsafe or controversial content.
 
-Where helpful, policy IDs should map to IAB Content Taxonomy 2.2 sensitive
-topics and simple suitability levels such as `low`, `medium`, `high`, and
-`floor`.
+Policy IDs can include IAB Content Taxonomy 2.2 mappings and suitability levels
+such as `low`, `medium`, `high`, and `floor`.
 
-### 6.5 Rewrite assistant
+### 7.5 Landing-page extraction
 
-For each high-risk policy hit where a rewrite is feasible, AdLint should
-suggest safer alternatives that preserve campaign intent while lowering risk.
+The current extractor accepts either `landing_page_html` or a URL. For URLs it
+uses robots-aware standard-library fetching for HTML pages. It extracts:
+
+- Page title.
+- Headings.
+- Visible claim-like text.
+- Form labels and inputs.
+- Pricing-related text.
+- Disclaimer-like text.
+- Common tracking scripts.
+- Fetch errors.
+
+JavaScript rendering, richer content extraction, and `trafilatura` fallback are
+future work.
+
+### 7.6 Rewrite assistant
+
+For high-risk or review-required policy hits where a rewrite is feasible,
+AdLint suggests safer alternatives that preserve campaign intent while lowering
+risk.
 
 Examples:
 
@@ -153,8 +224,9 @@ Examples:
 - Remove unsupported medical language.
 - Suggest a softer CTA.
 - Add disclosure reminders for sponsored or affiliate content.
+- Ask users to review privacy and consent details before continuing.
 
-## 7. Non-goals
+## 8. Non-goals
 
 The MVP will not:
 
@@ -165,14 +237,15 @@ The MVP will not:
 - Auto-submit ads to platforms.
 - Make live changes in ad accounts.
 - Make definitive HIPAA or statutory violation determinations.
+- Claim verified local model quality before live Ollama runs are benchmarked.
 - Fine-tune a model before enough labeled data exists.
 
 Fine-tuning should be considered only after a useful labeled dataset exists and
 benchmarks show a clear improvement over prompted baselines.
 
-## 8. Example input and output
+## 9. Example input and output
 
-### 8.1 High-risk example
+### 9.1 High-risk example
 
 Input:
 
@@ -190,12 +263,12 @@ Input:
 }
 ```
 
-Expected output shape:
+Representative output shape:
 
 ```json
 {
   "decision": "high_risk",
-  "risk_score": 0.91,
+  "risk_score": 0.9,
   "policy_hits": [
     {
       "policy_id": "unsupported_health_claim",
@@ -203,11 +276,7 @@ Expected output shape:
       "category": "health_claims",
       "evidence": [
         {
-          "text": "Lose 20 pounds in 30 days guaranteed",
-          "source": "headline"
-        },
-        {
-          "text": "clinically proven supplement",
+          "text": "Our clinically proven supplement melts fat fast. Try it risk-free today.",
           "source": "body"
         }
       ],
@@ -216,21 +285,19 @@ Expected output shape:
     {
       "policy_id": "weight_loss_claim",
       "severity": "high",
-      "category": "platform_policy",
+      "category": "health_claims",
       "evidence": [
         {
-          "text": "melts fat fast",
-          "source": "body"
+          "text": "Lose 20 pounds in 30 days guaranteed",
+          "source": "headline"
         }
       ],
-      "recommended_action": "Avoid absolute body or fat-loss language."
+      "recommended_action": "Avoid absolute body or fat-loss language and route for review."
     }
   ],
   "requires_review": true,
   "recommended_actions": [
-    "Remove guaranteed weight-loss claim.",
-    "Add substantiation or soften clinical claim.",
-    "Avoid absolute fat-loss language."
+    "Remove or qualify the claim and provide substantiation."
   ],
   "safer_rewrites": [
     {
@@ -238,11 +305,12 @@ Expected output shape:
       "body": "Designed to complement healthy habits. Individual results vary.",
       "cta": "Learn more"
     }
-  ]
+  ],
+  "logging_enabled": false
 }
 ```
 
-### 8.2 Borderline needs-review example
+### 9.2 Borderline needs-review example
 
 Input:
 
@@ -254,16 +322,16 @@ Input:
   "headline": "A calmer routine for better sleep",
   "body": "Join our wellness newsletter for science-backed sleep tips.",
   "cta": "Sign up",
-  "landing_page_url": "https://example.com/sleep-newsletter"
+  "landing_page_html": "<html><script src=\"https://connect.facebook.net/en_US/fbevents.js\"></script><body><h1>Sleep tips</h1><form><label>Email signup</label></form></body></html>"
 }
 ```
 
-Expected output shape:
+Representative output shape:
 
 ```json
 {
   "decision": "needs_review",
-  "risk_score": 0.52,
+  "risk_score": 0.66,
   "policy_hits": [
     {
       "policy_id": "wellness_claim_review",
@@ -271,11 +339,11 @@ Expected output shape:
       "category": "health_claims",
       "evidence": [
         {
-          "text": "science-backed sleep tips",
+          "text": "Join our wellness newsletter for science-backed sleep tips.",
           "source": "body"
         }
       ],
-      "recommended_action": "Clarify substantiation for the wellness claim."
+      "recommended_action": "Clarify what evidence supports the wellness claim."
     },
     {
       "policy_id": "tracking_pixel_risk",
@@ -283,116 +351,100 @@ Expected output shape:
       "category": "privacy",
       "evidence": [
         {
-          "text": "Meta Pixel detected on a health-adjacent signup page",
-          "source": "landing_page"
+          "text": "Meta Pixel",
+          "source": "landing_page_tracker_1"
         }
       ],
-      "recommended_action": "Review consent, tracking, and disclosure paths."
+      "recommended_action": "Review consent, tracking, disclosure, and data-sharing paths.",
+      "requires_review": true
     }
   ],
   "requires_review": true,
   "safer_rewrites": [
     {
-      "headline": "Simple ideas for a calmer evening routine",
-      "body": "Get practical wellness tips for building healthier habits. Results vary.",
-      "cta": "Sign up"
+      "headline": "A calmer routine for better sleep",
+      "body": "Review how your information is used, including consent choices and privacy details, before continuing.",
+      "cta": "Review details"
     }
-  ]
+  ],
+  "logging_enabled": false
 }
 ```
 
-## 9. Functional requirements
+## 10. Functional requirements
 
-### Submission and ingestion
+| ID | Status | Requirement and current behavior |
+| --- | --- | --- |
+| FR-1 | Implemented | Users can submit ad copy with headline, body, and CTA through CLI, API, or the Python engine. |
+| FR-2 | Implemented | Users can provide an optional `landing_page_url` or `landing_page_html`. |
+| FR-3 | Partial | The system extracts title, headings, visible claims, forms, pricing text, disclaimers, and trackers from static HTML. JavaScript rendering and richer extraction are future work. |
+| FR-4 | Implemented | Users can select `google`, `tiktok`, or `linkedin` policy behavior through platform metadata. Meta is future work. |
+| FR-5 | Implemented | Users can select industries such as `health`, `wellness`, `finance`, `saas`, `creator`, or `general`. |
+| FR-6 | Implemented | Deterministic rule checks run first using policy signals, regexes, keyword patterns, and heuristics. |
+| FR-7 | Partial | Optional Ollama classification exists behind `model_enabled` or `--enable-model`; live model quality is not yet verified. |
+| FR-8 | Implemented | The system returns structured JSON and can generate Markdown reports. HTML reports are future work. |
+| FR-9 | Implemented | The system maps risky phrases to policy IDs, categories, severities, sources, and recommended actions. |
+| FR-10 | Implemented | The system suggests deterministic safer rewrites for high-risk or review-required hits where feasible. |
+| FR-11 | Implemented | The system supports custom YAML policy files loaded from built-in policies or configured paths. |
+| FR-12 | Implemented | The repo includes a seed eval runner and 50 labeled examples. |
+| FR-13 | Partial | The system can call an Ollama-compatible local model, but verified live model runs and benchmarks remain future work. |
+| FR-14 | Implemented | Raw submissions are not persisted by default; users can enable JSONL logging for evaluation. |
+| FR-15 | Implemented | HIPAA and privacy flags are labeled `requires_review`, not definitive violations. |
+| FR-16 | Implemented | Users can enable or disable policy modules through `policy_modules`. |
+| FR-17 | Implemented | `make dev`, `make scan`, `make api`, `make eval`, and `make test` provide local run paths. |
+| FR-18 | Future | A Web UI will let users paste copy, select settings, and browse/export reports. |
+| FR-19 | Future | `scoring.yml` will let teams tune thresholds and weights without code changes. |
+| FR-20 | Future | SQLite storage may support eval datasets, run metadata, and anonymized logs. |
 
-- FR-1: User can submit ad copy with headline, body, and CTA through planned
-  CLI, API, or UI surfaces.
-- FR-2: User can provide an optional landing page URL.
-- FR-3: System extracts page title, headings, visible claims, forms, pricing
-  text, disclaimers, and tracking scripts where robots and security constraints
-  allow.
+## 11. Policy modules
 
-### Configuration
-
-- FR-4: User can select platform: `google`, `tiktok`, `linkedin`, or
-  `meta_later`.
-- FR-5: User can select industry: `health`, `wellness`, `finance`, `saas`,
-  `creator`, or `general`.
-- FR-11: System supports custom policy files in YAML, loaded from
-  `adlint/policies/` or a configured path at runtime.
-- FR-16: User can enable or disable specific policy modules through config.
-
-### Evaluation pipeline
-
-- FR-6: System runs deterministic rule checks first using regexes, keyword
-  patterns, and simple heuristics.
-- FR-7: System runs model-based classification for nuanced or ambiguous cases
-  using `gpt-oss-safeguard-20b` or an equivalent local classifier.
-- FR-9: System identifies exact risky phrases and maps them to policy IDs,
-  categories, severities, sources, and recommended actions.
-- FR-15: HIPAA and privacy flags are labeled `requires_review` with a short
-  explanation, not as definitive violations.
-
-### Outputs
-
-- FR-8: System returns a structured JSON object and optional Markdown or HTML
-  human-readable report.
-- FR-10: System suggests safer rewrites, with at least one rewrite per
-  high-risk policy hit where feasible.
-- FR-12: System includes an eval runner that can score model and rule outputs
-  against labeled examples.
-- FR-14: System does not persist raw submissions by default. Users can
-  optionally enable logging for evaluation.
-
-### Runtime and deployment
-
-- FR-13: System can run locally using Ollama-compatible open-weight models, with
-  documentation for loading `gpt-oss-safeguard-20b` or fallback models.
-- FR-17: System provides a planned single-command local run path such as
-  `docker compose up` or `make dev`, plus planned CLI command
-  `adlint scan <config>`.
-
-## 10. Policy modules
-
-Initial policy files:
+Current policy files:
 
 ```text
 adlint/policies/
+  brand_custom_template.yml
+  brand_safety_iab.yml
   ftc_health_claims.yml
   platform_google_ads.yml
-  platform_tiktok_ads.yml
   platform_linkedin_ads.yml
+  platform_tiktok_ads.yml
+  privacy_consumer_health_data.yml
   privacy_hipaa_marketing.yml
   privacy_tracking_pixels.yml
-  privacy_consumer_health_data.yml
-  brand_safety_iab.yml
-  brand_custom_template.yml
 ```
 
 Policy file shape:
 
 ```yaml
-id: unsupported_health_claim
-severity: high
-category: health_claims
-description: Health or wellness claim likely requiring substantiation.
-signals:
-  - guaranteed
-  - clinically proven
-  - cure
-  - lose * pounds
-model_prompt: >
-  Determine whether this ad makes a health-related claim that would likely
-  require substantiation or compliance review under health marketing rules.
-recommended_action: Remove or qualify the claim and provide substantiation.
-example_positive:
-  - "Lose 20 pounds in 30 days guaranteed."
-example_negative:
-  - "Support your wellness routine with daily nutrition. Results vary."
+policies:
+  - id: unsupported_health_claim
+    severity: high
+    category: health_claims
+    description: Health or wellness claim likely requiring substantiation.
+    modules:
+      - health_claims
+    platforms:
+      - google
+      - tiktok
+      - linkedin
+    industries:
+      - health
+      - wellness
+    signals:
+      - guaranteed
+      - clinically proven
+      - cure
+      - lose * pounds
+    model_prompt: >
+      Determine whether this ad makes a health-related claim that would likely
+      require substantiation or compliance review under health marketing rules.
+    recommended_action: Remove or qualify the claim and provide substantiation.
+    rewrite_strategy: qualify_claim
+    requires_review: true
 ```
 
-Policy entries should support optional mappings to brand-safety or suitability
-taxonomies where useful:
+Policy entries can include optional brand-safety or suitability taxonomy
+mappings where useful:
 
 ```yaml
 iab_taxonomy:
@@ -401,44 +453,54 @@ iab_taxonomy:
   suitability_level: medium
 ```
 
-## 11. Technical architecture
+## 12. Technical architecture
 
-Recommended MVP stack:
+Implemented MVP stack:
 
-- Frontend: lightweight Next.js, Streamlit, or Gradio dashboard in a later
-  phase.
-- Backend: Python FastAPI service exposing planned `/analyze` and `/eval`
-  endpoints.
-- CLI: planned `adlint scan <config>` command.
-- Local model runtime: Ollama or equivalent.
-- Classification model: `gpt-oss-safeguard-20b` or equivalent local policy
-  classifier.
-- Rewrite model: `gpt-oss-20b` or equivalent local reasoning model.
+- Package: Python package `adlint`.
+- CLI: `argparse` command exposed as `adlint`.
+- API: FastAPI app with `/health`, `/analyze`, and `/eval`.
+- Config: JSON or YAML ad configs plus YAML policy files.
+- Policy engine: built-in policies loaded with `importlib.resources`, plus
+  custom policy paths.
+- Rules: deterministic signal matching, derived landing-page mismatch, and
+  derived privacy-tracker checks.
+- Landing-page extraction: standard-library URL fetching, robots checks, and
+  `HTMLParser` extraction.
+- Optional model runtime: Ollama-compatible `/api/generate` calls.
+- Scoring: code-defined severity and context weights.
+- Output: JSON result objects and Markdown reports.
+- Logging: opt-in JSONL run logs.
+- Evaluation: seed JSONL dataset and metrics runner.
+
+Roadmap architecture:
+
+- Frontend: lightweight Web UI.
 - Scraping: Playwright for JavaScript-enabled pages, with `trafilatura` as a
   static extraction fallback.
-- Storage: SQLite for eval datasets, run metadata, and optional anonymized
-  logs.
-- Config: environment variables plus YAML policy files.
-- Output: JSON plus Markdown report with sections for overview, policy hits,
-  evidence, rewrites, privacy, and tracking.
+- Storage: SQLite for eval datasets, run metadata, and optional anonymized logs.
+- Config: future `scoring.yml` for threshold and weight calibration.
+- Model validation: verified local Ollama runs with benchmarked rule-only,
+  model-only, and hybrid comparisons.
 
 Processing pipeline:
 
 ```text
 Input (ad + metadata)
   -> Normalize ad and page data
-  -> Landing page fetch and extraction
+  -> Landing page fetch or HTML parsing
   -> Tracker and pixel detection
   -> Rule-based checks
-  -> Policy classifier
+  -> Optional local model classifier
   -> Risk scoring
   -> Rewrite generation
   -> JSON and Markdown report
+  -> Optional JSONL run log
 ```
 
-## 12. Risk scoring
+## 13. Risk scoring
 
-MVP scoring should be simple and transparent so users can tune it:
+MVP scoring is simple and transparent:
 
 ```text
 risk_score =
@@ -447,9 +509,10 @@ risk_score =
   + regulated_category_weight
   + landing_page_mismatch_weight
   + privacy_tracking_weight
+  + brand_safety_weight
 ```
 
-Suggested severity weights:
+Current severity weights:
 
 ```text
 low = 0.2
@@ -458,7 +521,7 @@ high = 0.7
 critical = 0.9
 ```
 
-Suggested decision thresholds:
+Current decision thresholds:
 
 ```text
 0.00 - 0.34 = approved
@@ -466,11 +529,35 @@ Suggested decision thresholds:
 0.70 - 1.00 = high_risk
 ```
 
-Thresholds should be configurable in a future `scoring.yml` file so teams can
-calibrate sensitivity by use case. High-severity health, privacy, and safety
-categories should favor recall over precision.
+If the highest severity is below `high`, the MVP caps the score at `0.69` so
+medium-only findings stay in `needs_review`. Thresholds and weights should
+move to a future `scoring.yml` file so teams can calibrate sensitivity by use
+case. High-severity health, privacy, and safety categories should favor recall
+over precision.
 
-## 13. Evaluation plan
+## 14. Evaluation plan
+
+### 14.1 Implemented seed eval
+
+The repo includes a 50-example seed dataset at
+`evals/datasets/seed_ads.jsonl`. It covers health, wellness, finance, SaaS,
+creator disclosure, privacy, landing-page mismatch, and brand-safety scenarios.
+
+Run:
+
+```bash
+make eval
+```
+
+The current eval runner reports:
+
+- Total examples.
+- Decision accuracy.
+- Misses by expected decision.
+- Per-policy precision and recall.
+- Per-row policy true positives, false negatives, and false positives.
+
+### 14.2 Future benchmark
 
 Create 200-500 labeled examples over time across several axes.
 
@@ -491,7 +578,7 @@ Policy labels:
 - `landing_page_mismatch`
 - `brand_safety_risk`
 
-Metrics:
+Future benchmark reports should include:
 
 - Accuracy for overall decision.
 - Precision by policy category.
@@ -499,90 +586,134 @@ Metrics:
   and safety categories.
 - False positive rate.
 - Manually reviewed false negatives.
+- Rule-only versus model-only versus hybrid comparisons.
 - Rewrite quality review for clarity, risk reduction, and intent preservation.
+- Representative examples and known failure modes.
 
-The repo should eventually include `docs/eval_report.md` with benchmark
-results, limitations, representative examples, and known failure modes.
+## 15. Phase plan
 
-## 14. Phase plan
-
-### Phase 1: Core engine MVP
+### Phase 1: Core engine MVP - implemented
 
 - Python package structure.
-- Planned `adlint scan <config>` CLI command.
+- `adlint scan <config>` CLI command.
+- FastAPI `/analyze` and `/eval` endpoints.
 - Policy YAML loader.
 - Deterministic rule engine.
-- Ollama-compatible model calls.
+- Optional Ollama-compatible model calls.
 - Risk scoring.
 - JSON and Markdown reports.
-- Approximately 50 curated sample ads focused on health and wellness.
+- Deterministic safer rewrites.
+- 50 curated seed eval examples.
+- Documentation and legal boundary notes.
+- Opt-in JSONL logging.
 
-### Phase 2: Web UI
+### Phase 2: Review hardening - current
+
+- Keep README and PRD aligned with the actual MVP.
+- Validate local install, tests, CLI examples, API examples, and eval command.
+- Preserve the decision-support and legal-boundary language throughout docs.
+- Avoid claiming live model quality, production storage, or Web UI behavior.
+
+### Phase 3: Web UI
 
 - Paste ad copy and metadata.
-- Add landing page URL.
-- Select platform and industry.
+- Add landing page URL or HTML.
+- Select platform, industry, and policy modules.
 - View detailed report and rewrites.
 - Export Markdown and JSON.
 - Copy safer rewrites.
 
-### Phase 3: Evals and benchmark
+### Phase 4: Evals and benchmark
 
 - 200-500 labeled examples.
 - Confusion matrix.
+- False positive and false negative review notes.
 - Rule-only vs. model-only vs. hybrid comparison.
 - Public benchmark report in `docs/eval_report.md`.
 
-### Phase 4: Optional fine-tuning
+### Phase 5: Optional model validation and fine-tuning
 
-- LoRA or adapter-based classifier trained on collected labeled examples.
-- Comparison against prompted `gpt-oss-safeguard-20b` baseline.
-- Published adapter and model card only if quality improves.
+- Verify live Ollama model runs on supported local models.
+- Compare model-assisted classification against deterministic rules.
+- Consider LoRA or adapter-based classifier training only after benchmark
+  evidence shows a clear need.
+- Publish an adapter and model card only if quality improves.
 
-## 15. Suggested repository structure
+## 16. Suggested repository structure
+
+Current repository structure:
 
 ```text
-adlint/
+AdLint/
   README.md
   PRD.md
-  app/
+  Makefile
   api/
+    main.py
   adlint/
     classifiers/
     policies/
-    rules/
-    scrapers/
-    scoring/
     rewrites/
+    rules/
+    scoring/
+    scrapers/
+    api.py
+    audit_log.py
+    cli.py
+    config.py
+    engine.py
+    models.py
+    policy.py
+    reports.py
+  docs/
+    eval_report.md
+    legal_disclaimer.md
+    local_models.md
+    policy_design.md
   evals/
     datasets/
-    results/
     run_eval.py
   examples/
-  docs/
-    prd.md
-    policy_design.md
-    legal_disclaimer.md
-    eval_report.md
+  tests/
   docker-compose.yml
   pyproject.toml
 ```
 
-## 16. Success criteria
+Future directories may include Web UI code, SQLite-backed storage migrations,
+and persisted eval results.
 
-MVP is successful if:
+## 17. Success criteria
 
-- A user can analyze an ad and landing page in under 60 seconds on a local
-  Apple Silicon workstation with adequate memory.
+### 17.1 MVP review criteria
+
+The MVP is ready for review if:
+
+- A user can run the CLI against example configs.
+- The API can analyze payloads and score eval examples.
 - Output points to specific evidence strings and sources, not generic warnings.
 - Health and wellness examples produce useful review flags aligned with the
   decision-support framing.
-- Landing page extraction identifies visible claims and common trackers.
-- Repo includes reproducible local setup with a single-command run path.
-- README includes example inputs and outputs, eval status, and limitations.
+- Privacy and HIPAA-related outputs use `requires_review` language rather than
+  definitive violation language.
+- Landing-page extraction identifies static visible claims and common trackers.
+- Reports include JSON, Markdown, rewrites, and the legal disclaimer.
+- Raw submissions are not logged unless `logging_enabled` is true.
+- Seed evals and tests are reproducible from documented commands.
+
+### 17.2 Longer-term success criteria
+
+AdLint becomes successful beyond the MVP if:
+
+- A user can analyze an ad and landing page in under 60 seconds on a local
+  Apple Silicon workstation with adequate memory.
+- The Web UI makes the main review workflow accessible to non-engineers.
+- A 200-500 example benchmark shows stable recall for high-severity health,
+  privacy, and safety categories.
+- Teams can tune scoring with `scoring.yml` without editing code.
+- Local model use is benchmarked and documented with clear limitations.
 - At least one external team can adopt AdLint without direct maintainer support.
 
-## 17. Source references
+## 18. Source references
 
 - OpenAI gpt-oss-safeguard:
   https://openai.com/index/introducing-gpt-oss-safeguard/

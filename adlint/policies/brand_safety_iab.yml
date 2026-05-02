@@ -1,0 +1,84 @@
+policies:
+  - id: brand_safety_adult_content
+    severity: high
+    category: brand_safety
+    description: Adult content or sexualized context can be unsuitable for many campaigns.
+    modules: [brand_safety]
+    signals: [adult, explicit, sexual, pornography]
+    recommended_action: Review adjacency and suitability controls before launch.
+    iab_taxonomy:
+      content_taxonomy_version: "2.2"
+      sensitive_topic: adult
+      suitability_level: high
+
+  - id: brand_safety_violence
+    severity: high
+    category: brand_safety
+    description: Violent context can trigger suitability restrictions.
+    modules: [brand_safety]
+    signals: [violence, violent, assault, weapon, murder]
+    recommended_action: Review inventory exclusions, adjacency, and creative fit.
+    iab_taxonomy:
+      content_taxonomy_version: "2.2"
+      sensitive_topic: violence
+      suitability_level: high
+
+  - id: brand_safety_tragedy_conflict
+    severity: high
+    category: brand_safety
+    description: Tragedy or conflict adjacency can create brand-suitability risk.
+    modules: [brand_safety]
+    signals: [tragedy, conflict, war, disaster, death]
+    recommended_action: Avoid opportunistic framing and review adjacency settings.
+    iab_taxonomy:
+      content_taxonomy_version: "2.2"
+      sensitive_topic: tragedy_or_conflict
+      suitability_level: high
+
+  - id: brand_safety_politics
+    severity: medium
+    category: brand_safety
+    description: Political content can require suitability and platform-policy review.
+    modules: [brand_safety]
+    signals: [election, politician, political, campaign finance, ballot]
+    recommended_action: Confirm political-content settings and disclosure requirements.
+    iab_taxonomy:
+      content_taxonomy_version: "2.2"
+      sensitive_topic: politics
+      suitability_level: medium
+
+  - id: brand_safety_misinformation
+    severity: high
+    category: brand_safety
+    description: Misinformation context can be unsafe for ad adjacency or claims.
+    modules: [brand_safety]
+    signals: [hoax, conspiracy, fake news, misinformation, miracle cure]
+    recommended_action: Review claim substantiation and block unsafe inventory adjacency.
+    iab_taxonomy:
+      content_taxonomy_version: "2.2"
+      sensitive_topic: misinformation
+      suitability_level: high
+
+  - id: brand_safety_sensitive_social_issue
+    severity: medium
+    category: brand_safety
+    description: Sensitive social issues can require review for tone, adjacency, and targeting.
+    modules: [brand_safety]
+    signals: [immigration, race, religion, gender identity, social issue]
+    recommended_action: Review suitability level, targeting, and creative tone.
+    iab_taxonomy:
+      content_taxonomy_version: "2.2"
+      sensitive_topic: sensitive_social_issues
+      suitability_level: medium
+
+  - id: brand_safety_controversial_content
+    severity: medium
+    category: brand_safety
+    description: Controversial content may require custom brand-safety routing.
+    modules: [brand_safety]
+    signals: [controversial, scandal, outrage, boycott]
+    recommended_action: Review brand fit and adjacency exclusions.
+    iab_taxonomy:
+      content_taxonomy_version: "2.2"
+      sensitive_topic: controversial_content
+      suitability_level: medium

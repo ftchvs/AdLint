@@ -1,0 +1,48 @@
+policies:
+  - id: ftc_health_breach_notification_indicator
+    severity: high
+    category: privacy
+    description: Health apps and connected devices can trigger FTC Health Breach Notification review.
+    modules: [privacy]
+    industries: [health, wellness]
+    requires_review: true
+    signals:
+      - health app
+      - connected device
+      - wearable
+      - sync your data
+      - health data
+    recommended_action: Review health-data collection, disclosure, and breach-notification obligations.
+    rewrite_strategy: add_review_reminder
+
+  - id: washington_mhmda_indicator
+    severity: medium
+    category: privacy
+    description: Washington My Health My Data Act indicators require consumer-health-data review.
+    modules: [privacy]
+    industries: [health, wellness]
+    requires_review: true
+    signals:
+      - consumer health data
+      - reproductive health
+      - geolocation
+      - health condition
+      - biometric
+    recommended_action: Review consumer-health-data notices, consent, and sharing restrictions.
+    rewrite_strategy: add_review_reminder
+
+  - id: ccpa_sensitive_health_indicator
+    severity: medium
+    category: privacy
+    description: Sensitive health-data indicators can require CCPA notice and rights review.
+    modules: [privacy]
+    industries: [health, wellness]
+    requires_review: true
+    signals:
+      - sensitive personal information
+      - health data
+      - precise geolocation
+      - genetic
+      - biometric
+    recommended_action: Review sensitive-data notices, opt-out paths, and minimization controls.
+    rewrite_strategy: add_review_reminder

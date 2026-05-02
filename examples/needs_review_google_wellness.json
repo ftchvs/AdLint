@@ -1,0 +1,9 @@
+{
+  "platform": "google",
+  "country": "US",
+  "industry": "wellness",
+  "headline": "A calmer routine for better sleep",
+  "body": "Join our wellness newsletter for science-backed sleep tips.",
+  "cta": "Sign up",
+  "landing_page_html": "<html><head><title>Sleep newsletter</title><script src='https://connect.facebook.net/en_US/fbevents.js'></script></head><body><h1>Simple sleep tips</h1><p>Science-backed ideas for a calmer evening routine. Results vary.</p><form><label>Email signup</label><input name='email'></form><p>Privacy policy and terms apply.</p></body></html>"
+}

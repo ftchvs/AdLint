@@ -1,0 +1,50 @@
+policies:
+  - id: google_health_restricted_category
+    severity: high
+    category: platform_policy
+    description: Google Ads can restrict health, medical, and supplement promotions.
+    modules: [platform]
+    platforms: [google]
+    industries: [health, wellness]
+    signals:
+      - supplement
+      - prescription
+      - pharmacy
+      - medical treatment
+      - medical device
+      - medical clinic
+      - clinic appointment
+      - telehealth
+      - health insurance
+    recommended_action: Confirm Google Ads healthcare policy eligibility and required certifications.
+    rewrite_strategy: add_review_reminder
+
+  - id: google_misrepresentation_risk
+    severity: high
+    category: platform_policy
+    description: Misleading claims, unavailable offers, and omitted material terms can trigger review.
+    modules: [platform]
+    platforms: [google]
+    signals:
+      - free trial
+      - no fees
+      - guaranteed approval
+      - limited time
+      - secret method
+    recommended_action: Clarify material terms, eligibility, and substantiation.
+    rewrite_strategy: clarify_terms
+
+  - id: google_financial_claim_review
+    severity: medium
+    category: platform_policy
+    description: Financial outcome and credit claims need careful qualification.
+    modules: [platform]
+    platforms: [google]
+    industries: [finance]
+    signals:
+      - guaranteed approval
+      - double your money
+      - risk-free investment
+      - fix your credit
+    recommended_action: Remove guaranteed financial outcomes and add clear eligibility context.
+    rewrite_strategy: qualify_claim
