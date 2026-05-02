@@ -7,10 +7,10 @@ signals, privacy risk, disclosure checks, and brand-safety review. This short
 paper reports the current deterministic evaluation of AdLint's policy-as-code
 engine on a 200-example synthetic benchmark. The benchmark reaches 1.000
 decision accuracy across `approved`, `needs_review`, and `high_risk` labels,
-with no decision mismatches and no policy false negatives in the included
-review window. The main observed limitation is precision at the policy-label
-level: 8 policy false-positive review notes remain, mostly from intentionally
-broad phrase rules.
+with no decision mismatches and no policy false-positive or false-negative
+review notes in the included review window. The main observed limitation is
+external validity: the synthetic benchmark is regression coverage, not a
+population-level reliability estimate.
 
 ## 1. Introduction
 
@@ -83,24 +83,27 @@ The 200-example rule-only benchmark completed without skipped examples.
 | Total examples | 200 |
 | Decision accuracy | 1.000 |
 | Decision mismatches | 0 |
-| Policy false-positive review notes | 8 |
+| Policy false-positive review notes | 0 |
 | Policy false-negative review notes | 0 |
 | Expected approved | 51 |
-| Expected needs_review | 48 |
-| Expected high_risk | 101 |
+| Expected needs_review | 50 |
+| Expected high_risk | 99 |
 
 The decision confusion matrix was diagonal:
 
 | Expected \ Actual | approved | needs_review | high_risk |
 | --- | ---: | ---: | ---: |
 | approved | 51 | 0 | 0 |
-| needs_review | 0 | 48 | 0 |
-| high_risk | 0 | 0 | 101 |
+| needs_review | 0 | 50 | 0 |
+| high_risk | 0 | 0 | 99 |
 
-Category-level recall was 1.000 for all tracked categories. Precision was
-1.000 for landing-page, misrepresentation, platform-policy, and privacy
-categories. Brand safety reached 0.885 precision, disclosure reached 0.929,
-and health claims reached 0.929.
+Category-level precision and recall were 1.000 for all tracked categories in
+the adjudicated benchmark.
+
+The 1.000 benchmark score should be read as internal regression evidence, not
+as external reliability. If the 200 examples were a representative random
+sample, 200/200 correct decisions would imply an approximate 95% Wilson lower
+bound of 0.981. They are not random; they are authored policy coverage.
 
 The all-modes comparison showed that rule-only and hybrid modes both scored
 200 examples with 1.000 decision accuracy. Model-only skipped all 200 rows
@@ -117,13 +120,15 @@ decision accuracy was 0.667. This supports the current architecture: use the
 model as extra review signal, not as a replacement for deterministic policy
 checks.
 
-The initial real-case diagnostic run scored 13 public-source, paraphrased
-cases. All 13 rows were expected high risk and rule-only produced high-risk
-decisions for all 13. This is not a reliability estimate because the sample is
-small and intentionally high-risk. It is, however, useful failure discovery:
-the run surfaced 2 policy false-negative review notes and 11 policy
-false-positive review notes, mostly around broad privacy and health-review
-signals.
+The current adjudicated real-case diagnostic run scored 13 public-source,
+paraphrased cases. All 13 rows were expected high risk and rule-only produced
+high-risk decisions for all 13. This is not a reliability estimate because the
+sample is small and intentionally high-risk. It is, however, useful failure
+discovery: the initial notes were resolved into tighter HIPAA, health-claim,
+consumer-health-data, and tracking-form rules plus corrected policy labels.
+If those 13 rows were a representative random sample, 13/13 correct decisions
+would imply an approximate 95% Wilson lower bound of 0.772, which is why the
+real-case percentage should not be marketed as production reliability.
 
 ## 4. Discussion
 
@@ -135,18 +140,11 @@ sending extra items to human review.
 
 The real-case diagnostic set adds a different value: it prevents the project
 from overfitting to synthetic examples. Its current result suggests that
-decision routing is conservative on sourced high-risk cases, but policy-id
-quality still needs adjudication. The next useful expansion is not
-fine-tuning; it is 50 to 100 sourced cases with balanced decisions, label
+decision routing is conservative on sourced high-risk cases and that the first
+round of policy-id notes has been adjudicated. The next useful expansion is
+not fine-tuning; it is 50 to 100 sourced cases with balanced decisions, label
 confidence, and reviewer notes so rule-only, model-only, and hybrid value can
 be compared without relying on hand-picked high-risk examples.
-
-The remaining policy false positives are understandable from the rule design.
-`guaranteed_outcome` intentionally captures broad guarantee language, even
-when it appears in finance or professional-outcome examples. Brand-safety
-misinformation rules can also fire on health phrases such as "miracle cure,"
-which may be defensible as multi-policy risk but should be reviewed as label
-coverage improves.
 
 The model path should not be treated as validated by this run. The current
 comparison only proves graceful unavailable-model handling. A future model
@@ -165,6 +163,6 @@ rewrite quality scoring.
 
 AdLint currently has a reproducible local benchmark for deterministic ad
 preflight checks. The rule-only engine reaches perfect decision accuracy on the
-200-example synthetic benchmark while surfacing 8 policy-label false positives
-for review. The next research step is to expand human-reviewed examples and
-run a pinned local-model comparison only when the model endpoint is available.
+200-example synthetic benchmark with no current policy-label review notes. The
+next research step is to expand human-reviewed examples and run a pinned
+local-model comparison only when the model endpoint is available.

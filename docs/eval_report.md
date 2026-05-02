@@ -94,9 +94,9 @@ Current `rule_benchmark_v1` results from the local deterministic rule runner:
 | Total examples | 200 |
 | Decision accuracy | 1.000 |
 | Expected approved | 51 |
-| Expected needs_review | 48 |
-| Expected high_risk | 101 |
-| Policy false-positive review notes | 8 |
+| Expected needs_review | 50 |
+| Expected high_risk | 99 |
+| Policy false-positive review notes | 0 |
 | Policy false-negative review notes | 0 |
 
 Current confusion matrix:
@@ -104,20 +104,27 @@ Current confusion matrix:
 | Expected \ Actual | approved | needs_review | high_risk |
 | --- | ---: | ---: | ---: |
 | approved | 51 | 0 | 0 |
-| needs_review | 0 | 48 | 0 |
-| high_risk | 0 | 0 | 101 |
+| needs_review | 0 | 50 | 0 |
+| high_risk | 0 | 0 | 99 |
 
 Current category-level precision and recall:
 
 | Category | Precision | Recall | False positives | False negatives |
 | --- | ---: | ---: | ---: | ---: |
-| brand_safety | 0.885 | 1.000 | 3 | 0 |
-| disclosure | 0.929 | 1.000 | 1 | 0 |
-| health_claims | 0.929 | 1.000 | 4 | 0 |
+| brand_safety | 1.000 | 1.000 | 0 | 0 |
+| disclosure | 1.000 | 1.000 | 0 | 0 |
+| health_claims | 1.000 | 1.000 | 0 | 0 |
 | landing_page | 1.000 | 1.000 | 0 | 0 |
 | misrepresentation | 1.000 | 1.000 | 0 | 0 |
 | platform_policy | 1.000 | 1.000 | 0 | 0 |
 | privacy | 1.000 | 1.000 | 0 | 0 |
+
+Interpretation: the 1.000 score is strong evidence that the deterministic
+rules and current benchmark labels are internally consistent. It is not a
+claim that future ads will pass review with 100% accuracy. If the 200 examples
+were a representative random sample, 200/200 correct decisions would imply an
+approximate 95% Wilson lower bound of 0.981, but this benchmark is authored
+regression coverage rather than a random production sample.
 
 ## Real-case Diagnostic Results
 
@@ -126,7 +133,7 @@ too small and too biased toward known high-risk public actions to estimate
 production reliability. Its value is surfacing concrete policy-id misses,
 over-triggers, and hybrid-model changes on source-backed cases.
 
-The initial rule-only run produced:
+The current adjudicated rule-only run produced:
 
 | Metric | Value |
 | --- | ---: |
@@ -134,22 +141,21 @@ The initial rule-only run produced:
 | Expected high_risk | 13 |
 | Decision mismatches | 0 |
 | Decision accuracy | 1.000 |
-| Policy false-negative review notes | 2 |
-| Policy false-positive review notes | 11 |
+| Policy false-negative review notes | 0 |
+| Policy false-positive review notes | 0 |
 
 The current decision metric is not strong reliability evidence because every
 seeded real-case row is high-risk by design. The useful signal is at policy
-level:
+level: the previously surfaced real-case policy false positives and false
+negatives have been adjudicated into either tighter rules or corrected
+expected labels. Keep the real-case set diagnostic for now, and grow it to
+balanced approved, needs-review, and high-risk cases before treating rates as
+reliable.
 
-- False negatives: `tiktok_disclosure_risk` on the Cerebral-style telehealth
-  tracking row, and `unsupported_health_claim` on the Hexpress-style
-  clinically backed weight-loss treatment row.
-- False positives: the largest cluster is privacy review over-triggering on
-  clinic/provider/appointment language (`hipaa_marketing_review`) and
-  broad health-data language (`ftc_health_breach_notification_indicator`).
-- Actionable interpretation: keep the real-case set diagnostic for now, and
-  grow it to balanced approved, needs-review, and high-risk cases before
-  treating rates as reliable.
+If treated as a representative random sample, 13/13 correct decisions would
+only imply an approximate 95% Wilson lower bound of 0.772. Because the set is
+hand selected and all rows are high-risk, that bound is illustrative only; the
+real-case set is useful for failure discovery, not reliability estimation.
 
 The latest full all-modes comparison was run with an intentionally unavailable
 loopback model endpoint:
@@ -178,10 +184,8 @@ replace deterministic rules yet: the local model still undercalled one health
 review row in the smoke subset and maps concerns to `model_policy_review`
 rather than the detailed YAML policy ids.
 
-Known policy-label review notes include broad `guaranteed_outcome` matches in
-finance or professional-outcome copy, `brand_safety_misinformation` matches
-when phrases such as "miracle cure" appear in health or creator examples, and
-sensitive-social-issue matches on some LinkedIn targeting examples.
+The current benchmark test now fails if the adjudicated rule benchmark or
+real-case set produces policy false-positive or false-negative review notes.
 
 For a paper-style summary of the benchmark design and result interpretation,
 see `docs/research_paper.md`. For the compiled LaTeX paper with charts,

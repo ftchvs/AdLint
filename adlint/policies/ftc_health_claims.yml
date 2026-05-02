@@ -7,8 +7,10 @@ policies:
     industries: [health, wellness]
     signals:
       - clinically proven
+      - clinically backed
+      - clinical study
+      - clinical trial
       - doctor recommended
-      - clinical
       - medical breakthrough
     model_prompt: >
       Determine whether this ad makes a health-related claim that would likely

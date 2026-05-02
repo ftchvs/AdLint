@@ -8,6 +8,35 @@ from adlint.models import Evidence, LandingPageSnapshot, Policy, PolicyHit, Subm
 
 MAX_EVIDENCE_PER_POLICY = 5
 
+HIPAA_HEALTHCARE_CONTEXT_SIGNALS = (
+    "covered entity",
+    "business associate",
+    "clinic",
+    "medical clinic",
+    "medical treatment",
+    "provider",
+    "telehealth",
+    "appointment",
+    "prescription",
+    "pharmacy",
+    "therapy",
+)
+HIPAA_PATIENT_DATA_SIGNALS = (
+    "patient",
+    "patients",
+    "patient audience",
+    "patient details",
+    "patient health data",
+    "patient follow-up",
+    "patient care",
+    "patient reminders",
+    "health data",
+    "medical record",
+    "intake form",
+    "appointment notes",
+    "discuss your symptoms",
+)
+
 
 def run_rule_checks(
     submission: Submission,
@@ -59,12 +88,27 @@ def dedupe_hits(hits: list[PolicyHit]) -> list[PolicyHit]:
 
 
 def _match_policy(policy: Policy, fields: dict[str, str]) -> list[Evidence]:
+    if policy.id == "hipaa_marketing_review":
+        return _match_hipaa_marketing_policy(fields)
+    if policy.id == "hipaa_tracking_technology_review":
+        return _match_hipaa_tracking_policy(policy, fields)
+    return _match_signals(policy.signals, fields)
+
+
+def _match_signals(
+    signals: tuple[str, ...],
+    fields: dict[str, str],
+    *,
+    skip_disclaimers: bool = False,
+) -> list[Evidence]:
     evidence: list[Evidence] = []
     seen: set[tuple[str, str]] = set()
 
-    for signal in policy.signals:
+    for signal in signals:
         pattern = _signal_to_regex(signal)
         for source, text in fields.items():
+            if skip_disclaimers and source.startswith("landing_page_disclaimer"):
+                continue
             if not text:
                 continue
             match = pattern.search(text)
@@ -80,6 +124,24 @@ def _match_policy(policy: Policy, fields: dict[str, str]) -> list[Evidence]:
             seen.add(key)
 
     return evidence
+
+
+def _match_hipaa_marketing_policy(fields: dict[str, str]) -> list[Evidence]:
+    context_evidence = _match_signals(HIPAA_HEALTHCARE_CONTEXT_SIGNALS, fields, skip_disclaimers=True)
+    patient_data_evidence = _match_signals(HIPAA_PATIENT_DATA_SIGNALS, fields, skip_disclaimers=True)
+    if not context_evidence or not patient_data_evidence:
+        return []
+    return [*context_evidence, *patient_data_evidence]
+
+
+def _match_hipaa_tracking_policy(policy: Policy, fields: dict[str, str]) -> list[Evidence]:
+    tracker_evidence = _match_signals(policy.signals, fields)
+    if not tracker_evidence:
+        return []
+    hipaa_context_evidence = _match_hipaa_marketing_policy(fields)
+    if not hipaa_context_evidence:
+        return []
+    return [*tracker_evidence, *hipaa_context_evidence]
 
 
 def _derived_landing_page_hits(

@@ -25,7 +25,6 @@ policies:
     requires_review: true
     signals:
       - health quiz
-      - symptoms
       - intake form
       - book appointment
       - email signup
