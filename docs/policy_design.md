@@ -40,6 +40,23 @@ The bundled MVP modules are:
 Users can restrict evaluation with `policy_modules` in the scan config or load
 custom YAML with `adlint scan config.json --policy-path path/to/policies`.
 
+## Platform policy modules
+
+Platform modules use `platforms` filters so a Google, Meta, TikTok, or
+LinkedIn-specific policy does not fire on another ad network. Keep platform
+policy IDs narrow enough to explain the exact review concern.
+
+The bundled platform files are:
+
+- `platform_google_ads.yml`: Google health, financial-claim, and
+  misrepresentation checks.
+- `platform_meta_ads.yml`: Meta personal-attribute health and finance checks,
+  health or appearance result framing, and branded-content disclosure checks.
+- `platform_tiktok_ads.yml`: TikTok weight-management, misleading-content, and
+  disclosure checks.
+- `platform_linkedin_ads.yml`: LinkedIn sensitive targeting, discrimination,
+  and professional-claim checks.
+
 ## Review Labels
 
 HIPAA, FTC Health Breach Notification Rule, Washington My Health My Data Act,

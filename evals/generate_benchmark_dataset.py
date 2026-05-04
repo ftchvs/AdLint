@@ -27,6 +27,7 @@ def build_rows() -> list[dict[str, Any]]:
     rows.extend(_finance_rows())
     rows.extend(_linkedin_rows())
     rows.extend(_disclosure_rows())
+    rows.extend(_meta_rows())
     rows.extend(_brand_safety_rows())
     rows.extend(_landing_page_rows())
     _validate_rows(rows)
@@ -85,9 +86,9 @@ def _approved_rows() -> list[dict[str, Any]]:
         ("Healthy lunch ideas", "Save recipes, prep steps, and grocery notes.", "Browse ideas"),
     ]
     rows = []
-    rows.extend(_fixed_rows("benchmark-approved-saas", "linkedin", "saas", saas, "approved", []))
-    rows.extend(_fixed_rows("benchmark-approved-general", "google", "general", general, "approved", []))
-    rows.extend(_fixed_rows("benchmark-approved-wellness", "google", "wellness", wellness, "approved", []))
+    rows.extend(_fixed_rows("benchmark-approved-saas", "linkedin", "saas", saas[:9], "approved", []))
+    rows.extend(_fixed_rows("benchmark-approved-general", "google", "general", general[:9], "approved", []))
+    rows.extend(_fixed_rows("benchmark-approved-wellness", "google", "wellness", wellness[:6], "approved", []))
     return rows
 
 
@@ -314,6 +315,88 @@ def _disclosure_rows() -> list[dict[str, Any]]:
         "needs_review",
         ["tiktok_disclosure_risk", "missing_affiliate_or_sponsor_disclosure"],
     )
+
+
+def _meta_rows() -> list[dict[str, Any]]:
+    approved = [
+        ("Campaign launch notes for teams", "Organize briefs, approvals, and next steps.", "Learn more"),
+        ("Creative testing checklist", "Compare messages and asset notes before publishing.", "Download"),
+        ("Retail planning calendar", "Track seasonal promotions, tasks, and owner notes.", "View calendar"),
+        ("Wellness event schedule", "Find voluntary classes and preparation reminders.", "Browse events"),
+    ]
+    creator_review = [
+        ("Paid partnership desk setup", "Use my affiliate code for the partner product.", "Shop now"),
+        ("Sponsored morning routine", "The partner product is featured with a promo code.", "Use code"),
+        ("Affiliate creator toolkit", "This paid partnership includes setup templates.", "Download"),
+        ("Partner product workflow", "Sponsored tips include affiliate resources.", "Learn more"),
+    ]
+    high_risk = [
+        (
+            "Are you overweight? See a before and after transformation",
+            "Our clinically proven supplement helps you lose 20 pounds and melts fat.",
+            "Learn more",
+            [
+                "meta_personal_attributes_health",
+                "meta_health_appearance_results",
+                "unsupported_health_claim",
+                "weight_loss_claim",
+                "before_after_claim",
+            ],
+            "health",
+        ),
+        (
+            "Tired of your symptoms? Try our transformation plan",
+            "A clinical study routine supports dramatic results.",
+            "Start today",
+            [
+                "meta_personal_attributes_health",
+                "meta_health_appearance_results",
+                "unsupported_health_claim",
+                "before_after_claim",
+            ],
+            "health",
+        ),
+        (
+            "Struggling with debt and bad credit?",
+            "Explore a planning consultation for people behind on bills.",
+            "Learn more",
+            ["meta_personal_attributes_finance"],
+            "finance",
+        ),
+        (
+            "Are you broke after monthly bills?",
+            "Review neutral budgeting resources for credit planning.",
+            "Get guide",
+            ["meta_personal_attributes_finance"],
+            "finance",
+        ),
+    ]
+
+    rows = _fixed_rows("benchmark-meta-approved", "meta", "saas", approved, "approved", [])
+    rows.extend(
+        _fixed_rows(
+            "benchmark-meta-creator",
+            "meta",
+            "creator",
+            creator_review,
+            "needs_review",
+            ["meta_branded_content_disclosure", "missing_affiliate_or_sponsor_disclosure"],
+        )
+    )
+    rows.extend(
+        _row(
+            f"benchmark-meta-high-risk-{index:03d}",
+            "meta",
+            industry,
+            headline,
+            body,
+            cta,
+            "high_risk",
+            expected_policy_ids,
+        )
+        for index, (headline, body, cta, expected_policy_ids, industry) in enumerate(high_risk, start=1)
+    )
+    return rows
 
 
 def _brand_safety_rows() -> list[dict[str, Any]]:

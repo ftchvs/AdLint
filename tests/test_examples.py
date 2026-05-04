@@ -19,6 +19,20 @@ EXAMPLE_EXPECTATIONS = {
         "high_risk",
         {"linkedin_sensitive_targeting", "linkedin_discrimination_risk"},
     ),
+    "meta_approved_saas.json": ("approved", set()),
+    "meta_high_risk_health.json": (
+        "high_risk",
+        {
+            "meta_personal_attributes_health",
+            "meta_health_appearance_results",
+            "unsupported_health_claim",
+            "weight_loss_claim",
+        },
+    ),
+    "meta_needs_review_creator.json": (
+        "needs_review",
+        {"meta_branded_content_disclosure", "missing_affiliate_or_sponsor_disclosure"},
+    ),
     "needs_review_google_wellness.json": (
         "needs_review",
         {"tracking_pixel_risk", "health_form_tracking_risk"},

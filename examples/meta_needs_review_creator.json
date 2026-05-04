@@ -1,0 +1,9 @@
+{
+  "platform": "meta",
+  "country": "US",
+  "industry": "creator",
+  "headline": "Paid partnership desk setup",
+  "body": "Use my affiliate code for the partner product featured in this workflow.",
+  "cta": "Shop now",
+  "policy_modules": ["platform", "disclosure", "brand_safety"]
+}

@@ -1,0 +1,9 @@
+{
+  "platform": "meta",
+  "country": "US",
+  "industry": "health",
+  "headline": "Are you overweight? See a before and after transformation",
+  "body": "Our clinically proven supplement helps you lose 20 pounds and melts fat.",
+  "cta": "Learn more",
+  "policy_modules": ["health_claims", "platform", "privacy", "brand_safety"]
+}

@@ -29,7 +29,7 @@ deterministic policy engine remains the reproducible baseline.
 
 The evaluation uses three local JSONL datasets:
 
-- `evals/datasets/seed_ads.jsonl`: a 50-example smoke dataset.
+- `evals/datasets/seed_ads.jsonl`: a 54-example smoke dataset.
 - `evals/datasets/rule_benchmark_v1.jsonl`: a 200-example benchmark generated
   from the seed set plus policy-author authored synthetic variants.
 - `evals/datasets/real_cases_v1.jsonl`: a 75-example public-source diagnostic
