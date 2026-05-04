@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -58,12 +59,18 @@ def main() -> int:
         default=25,
         help="Maximum false-positive and false-negative notes to include.",
     )
+    parser.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="Print a compact summary to stdout while preserving full JSON/Markdown outputs.",
+    )
     args = parser.parse_args()
 
     rows = _load_rows(Path(args.dataset))
     if args.limit is not None:
         rows = rows[: args.limit]
     if args.mode == "all":
+        all_start = time.perf_counter()
         mode_metrics = {
             mode: _run_eval(
                 rows,
@@ -77,6 +84,7 @@ def main() -> int:
             "mode": "all",
             "modes": mode_metrics,
             "hybrid_value": _hybrid_value_metrics(mode_metrics, max_review_notes=args.max_review_notes),
+            "elapsed_seconds": round(time.perf_counter() - all_start, 3),
         }
     else:
         metrics = _run_eval(
@@ -96,7 +104,10 @@ def main() -> int:
         markdown_path.parent.mkdir(parents=True, exist_ok=True)
         markdown_path.write_text(_markdown_report(metrics), encoding="utf-8")
 
-    print(json.dumps(metrics, indent=2, sort_keys=True))
+    if args.summary_only:
+        print(_summary_report(metrics, json_output=args.output, markdown_output=args.markdown_output))
+    else:
+        print(json.dumps(metrics, indent=2, sort_keys=True))
     return 0 if _passes(metrics, min_accuracy=args.min_decision_accuracy, require_model=args.require_model) else 1
 
 
@@ -114,6 +125,7 @@ def _run_eval(
     ollama_model: str | None = None,
     max_review_notes: int = 25,
 ) -> dict[str, Any]:
+    start = time.perf_counter()
     policy_categories = _policy_categories()
     results = [
         _score_row(row, policy_categories=policy_categories, mode=mode, ollama_model=ollama_model)
@@ -121,6 +133,7 @@ def _run_eval(
     ]
     metrics = _metrics(results, max_review_notes=max_review_notes)
     metrics["mode"] = mode
+    metrics["elapsed_seconds"] = round(time.perf_counter() - start, 3)
     return metrics
 
 
@@ -135,6 +148,66 @@ def _passes(metrics: dict[str, Any], *, min_accuracy: float, require_model: bool
     if metrics["total_examples"] == 0:
         return not require_model
     return metrics["decision_accuracy"] >= min_accuracy
+
+
+def _summary_report(metrics: dict[str, Any], *, json_output: str | None = None, markdown_output: str | None = None) -> str:
+    lines = ["AdLint eval summary"]
+    if metrics.get("mode") == "all":
+        lines.append(f"mode: {metrics.get('mode')}")
+        lines.append(f"elapsed_seconds: {metrics.get('elapsed_seconds', 0)}")
+        for mode, mode_metrics in metrics["modes"].items():
+            lines.append("")
+            lines.extend(f"{mode}.{line}" for line in _summary_lines(mode_metrics))
+    else:
+        lines.extend(_summary_lines(metrics))
+    lines.extend(
+        [
+            f"json_output: {json_output or '<none>'}",
+            f"markdown_output: {markdown_output or '<none>'}",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _summary_lines(metrics: dict[str, Any]) -> list[str]:
+    review_counts = _review_note_counts(metrics)
+    return [
+        f"mode: {metrics.get('mode', 'rule-only')}",
+        f"total_rows: {metrics.get('total_examples', 0)}",
+        f"decision_accuracy: {float(metrics.get('decision_accuracy', 0.0)):.3f}",
+        f"decision_mismatches: {review_counts['decision_mismatches']}",
+        f"policy_false_negatives: {review_counts['policy_false_negatives']}",
+        f"policy_false_positives: {review_counts['policy_false_positives']}",
+        f"elapsed_seconds: {metrics.get('elapsed_seconds', 0)}",
+    ]
+
+
+def _review_note_counts(metrics: dict[str, Any]) -> dict[str, int]:
+    return {
+        "decision_mismatches": _decision_mismatch_count(metrics),
+        "policy_false_negatives": _policy_metric_count(metrics, "false_negative_count"),
+        "policy_false_positives": _policy_metric_count(metrics, "false_positive_count"),
+    }
+
+
+def _decision_mismatch_count(metrics: dict[str, Any]) -> int:
+    matrix = metrics.get("confusion_matrix", {})
+    mismatches = 0
+    for expected, actual_counts in matrix.items():
+        if not isinstance(actual_counts, dict):
+            continue
+        for actual, count in actual_counts.items():
+            if actual != expected:
+                mismatches += int(count)
+    return mismatches
+
+
+def _policy_metric_count(metrics: dict[str, Any], key: str) -> int:
+    total = 0
+    for values in metrics.get("policy_metrics", {}).values():
+        if isinstance(values, dict):
+            total += int(values.get(key, 0))
+    return total
 
 
 def _load_rows(path: Path) -> list[dict[str, Any]]:
@@ -279,11 +352,17 @@ def _hybrid_value_metrics(
     model_added_policy_hit_count = 0
     model_added_expected_policy_hit_count = 0
     model_added_false_positive_policy_hit_count = 0
+    model_added_generic_policy_review_count = 0
+    model_added_detailed_policy_hit_count = 0
+    model_added_detailed_expected_policy_hit_count = 0
+    model_added_detailed_false_positive_policy_hit_count = 0
     model_removed_policy_hit_count = 0
     model_rescued_policy_false_negative_count = 0
     rows_with_model_added_findings = 0
     rows_with_model_added_expected_findings = 0
     rows_with_model_added_false_positives = 0
+    rows_with_model_added_generic_review = 0
+    rows_with_model_added_detailed_findings = 0
 
     for row_id in row_ids:
         rule = rule_results[row_id]
@@ -308,16 +387,28 @@ def _hybrid_value_metrics(
         removed_policy_ids = sorted(rule_policy_ids - hybrid_policy_ids)
         added_expected_policy_ids = sorted(set(added_policy_ids) & expected_policy_ids)
         added_false_positive_policy_ids = sorted(set(added_policy_ids) - expected_policy_ids)
+        added_generic_policy_ids = sorted(policy_id for policy_id in added_policy_ids if policy_id == "model_policy_review")
+        added_detailed_policy_ids = sorted(policy_id for policy_id in added_policy_ids if policy_id != "model_policy_review")
+        added_detailed_expected_policy_ids = sorted(set(added_detailed_policy_ids) & expected_policy_ids)
+        added_detailed_false_positive_policy_ids = sorted(set(added_detailed_policy_ids) - expected_policy_ids)
         rescued_policy_ids = sorted((expected_policy_ids - rule_policy_ids) & hybrid_policy_ids)
 
         model_added_policy_hit_count += len(added_policy_ids)
         model_added_expected_policy_hit_count += len(added_expected_policy_ids)
         model_added_false_positive_policy_hit_count += len(added_false_positive_policy_ids)
+        model_added_generic_policy_review_count += len(added_generic_policy_ids)
+        model_added_detailed_policy_hit_count += len(added_detailed_policy_ids)
+        model_added_detailed_expected_policy_hit_count += len(added_detailed_expected_policy_ids)
+        model_added_detailed_false_positive_policy_hit_count += len(added_detailed_false_positive_policy_ids)
         model_removed_policy_hit_count += len(removed_policy_ids)
         model_rescued_policy_false_negative_count += len(rescued_policy_ids)
 
         if added_policy_ids:
             rows_with_model_added_findings += 1
+            if added_generic_policy_ids:
+                rows_with_model_added_generic_review += 1
+            if added_detailed_policy_ids:
+                rows_with_model_added_detailed_findings += 1
             if added_expected_policy_ids:
                 rows_with_model_added_expected_findings += 1
             if added_false_positive_policy_ids:
@@ -330,8 +421,12 @@ def _hybrid_value_metrics(
                         "rule_decision": rule["actual_decision"],
                         "hybrid_decision": hybrid["actual_decision"],
                         "added_policy_ids": added_policy_ids,
+                        "added_generic_policy_ids": added_generic_policy_ids,
+                        "added_detailed_policy_ids": added_detailed_policy_ids,
                         "added_expected_policy_ids": added_expected_policy_ids,
                         "added_false_positive_policy_ids": added_false_positive_policy_ids,
+                        "added_detailed_expected_policy_ids": added_detailed_expected_policy_ids,
+                        "added_detailed_false_positive_policy_ids": added_detailed_false_positive_policy_ids,
                     }
                 )
         if removed_policy_ids and len(model_removed_notes) < max_review_notes:
@@ -368,9 +463,15 @@ def _hybrid_value_metrics(
         "rows_with_model_added_findings": rows_with_model_added_findings,
         "rows_with_model_added_expected_findings": rows_with_model_added_expected_findings,
         "rows_with_model_added_false_positives": rows_with_model_added_false_positives,
+        "rows_with_model_added_generic_review": rows_with_model_added_generic_review,
+        "rows_with_model_added_detailed_findings": rows_with_model_added_detailed_findings,
         "model_added_policy_hit_count": model_added_policy_hit_count,
         "model_added_expected_policy_hit_count": model_added_expected_policy_hit_count,
         "model_added_false_positive_policy_hit_count": model_added_false_positive_policy_hit_count,
+        "model_added_generic_policy_review_count": model_added_generic_policy_review_count,
+        "model_added_detailed_policy_hit_count": model_added_detailed_policy_hit_count,
+        "model_added_detailed_expected_policy_hit_count": model_added_detailed_expected_policy_hit_count,
+        "model_added_detailed_false_positive_policy_hit_count": model_added_detailed_false_positive_policy_hit_count,
         "model_removed_policy_hit_count": model_removed_policy_hit_count,
         "model_rescued_policy_false_negative_count": model_rescued_policy_false_negative_count,
         "review_notes": {
@@ -657,8 +758,14 @@ def _markdown_hybrid_value(value: dict[str, Any]) -> list[str]:
         ("Model-only undercalls", "model_only_undercall_count"),
         ("Model-only overcalls", "model_only_overcall_count"),
         ("Rows with model-added findings", "rows_with_model_added_findings"),
+        ("Rows with generic model review", "rows_with_model_added_generic_review"),
+        ("Rows with detailed model-added findings", "rows_with_model_added_detailed_findings"),
         ("Model-added expected policy hits", "model_added_expected_policy_hit_count"),
         ("Model-added false-positive policy hits", "model_added_false_positive_policy_hit_count"),
+        ("Generic model review additions", "model_added_generic_policy_review_count"),
+        ("Detailed model-added policy hits", "model_added_detailed_policy_hit_count"),
+        ("Detailed model-added expected policy hits", "model_added_detailed_expected_policy_hit_count"),
+        ("Detailed model-added false-positive policy hits", "model_added_detailed_false_positive_policy_hit_count"),
         ("Model-rescued policy false negatives", "model_rescued_policy_false_negative_count"),
     ):
         lines.append(f"| {label} | {value.get(key, 0)} |")
@@ -669,9 +776,11 @@ def _markdown_hybrid_value(value: dict[str, Any]) -> list[str]:
         lines.append("- None in the included note window.")
     for note in added_notes:
         added = ", ".join(note.get("added_policy_ids", [])) or "none"
+        detailed = ", ".join(note.get("added_detailed_policy_ids", [])) or "none"
         false_positive = ", ".join(note.get("added_false_positive_policy_ids", [])) or "none"
         lines.append(
             f"- `{note['row_id']}` added `{added}`; "
+            f"detailed `{detailed}`; "
             f"not in labels: `{false_positive}`; model status `{note.get('model_status', 'unknown')}`."
         )
     lines.append("")

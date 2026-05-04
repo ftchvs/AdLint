@@ -31,10 +31,11 @@ are sampled because they are interesting, confusing, or representative of known
 customer workflows. That makes them useful for debugging, but biased as a
 population sample.
 
-Until the real-case set reaches roughly 50 to 100 well-labeled cases across
-multiple policy areas and source tiers, treat percentages as directional only.
-Even after that, report confidence carefully and keep synthetic regression
-benchmarks separate from real-case diagnostics.
+The current `real_cases_v1` set has 75 well-labeled public-source rows balanced
+across `approved`, `needs_review`, and `high_risk`. Treat percentages as
+diagnostic because the rows are curated rather than randomly sampled. Report
+confidence carefully and keep synthetic regression benchmarks separate from
+real-case diagnostics.
 
 ## Source tiers
 

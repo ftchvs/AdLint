@@ -32,9 +32,10 @@ The evaluation uses three local JSONL datasets:
 - `evals/datasets/seed_ads.jsonl`: a 50-example smoke dataset.
 - `evals/datasets/rule_benchmark_v1.jsonl`: a 200-example benchmark generated
   from the seed set plus policy-author authored synthetic variants.
-- `evals/datasets/real_cases_v1.jsonl`: a 13-example public-source diagnostic
-  set derived from FTC, ASA/CAP, and DOJ/HUD-style public cases. These rows are
-  paraphrased from public claim patterns and stored with source metadata.
+- `evals/datasets/real_cases_v1.jsonl`: a 75-example public-source diagnostic
+  set balanced across 25 approved, 25 needs-review, and 25 high-risk expected
+  decisions. These rows are paraphrased from public sources and stored with
+  source metadata.
 
 Each row includes an input submission, an expected decision, and expected
 policy ids. The runner evaluates decision accuracy, confusion matrices,
@@ -66,12 +67,24 @@ The real-case diagnostic command is:
 make real-cases
 ```
 
-The latest model comparison was run against an intentionally unavailable
-loopback endpoint so unavailable-model behavior completed quickly and
-reproducibly:
+The live local-model quality command for the balanced real-case set is:
+
+```bash
+make real-cases-model-quality
+```
+
+Fallback behavior can still be reproduced with an intentionally unavailable
+loopback endpoint:
 
 ```bash
 ADLINT_OLLAMA_URL=http://127.0.0.1:9/api/chat make model-benchmark
+```
+
+The latest live model-quality comparison used the local
+`gpt-oss-safeguard:20b` model on the balanced 75-row real-case set:
+
+```bash
+make real-cases-model-quality
 ```
 
 ## 3. Results
@@ -105,10 +118,10 @@ as external reliability. If the 200 examples were a representative random
 sample, 200/200 correct decisions would imply an approximate 95% Wilson lower
 bound of 0.981. They are not random; they are authored policy coverage.
 
-The all-modes comparison showed that rule-only and hybrid modes both scored
-200 examples with 1.000 decision accuracy. Model-only skipped all 200 rows
-because the local model endpoint was unavailable. Hybrid retained rule-based
-decisions and attached unavailable-model metadata.
+The all-modes fallback comparison showed that rule-only and hybrid modes both
+scored 200 examples with 1.000 decision accuracy. Model-only skipped all 200
+rows because the local model endpoint was unavailable. Hybrid retained
+rule-based decisions and attached unavailable-model metadata.
 
 A separate local smoke run should be used before interpreting model quality. It
 requires the configured Ollama model to return status `ok` on a small subset
@@ -120,15 +133,20 @@ decision accuracy was 0.667. This supports the current architecture: use the
 model as extra review signal, not as a replacement for deterministic policy
 checks.
 
-The current adjudicated real-case diagnostic run scored 13 public-source,
-paraphrased cases. All 13 rows were expected high risk and rule-only produced
-high-risk decisions for all 13. This is not a reliability estimate because the
-sample is small and intentionally high-risk. It is, however, useful failure
-discovery: the initial notes were resolved into tighter HIPAA, health-claim,
-consumer-health-data, and tracking-form rules plus corrected policy labels.
-If those 13 rows were a representative random sample, 13/13 correct decisions
-would imply an approximate 95% Wilson lower bound of 0.772, which is why the
-real-case percentage should not be marketed as production reliability.
+The current adjudicated real-case diagnostic run scored 75 public-source,
+paraphrased cases balanced across 25 approved, 25 needs-review, and 25
+high-risk expected decisions. Rule-only produced a diagonal confusion matrix
+with no decision mismatches and no policy false-positive or false-negative
+review notes. This is stronger diagnostic evidence than the previous
+all-high-risk set, but it is still curated public-source coverage rather than
+a random production sample.
+
+The live `gpt-oss-safeguard:20b` run completed all 75 model-required rows with
+status `ok`. Model-only decision accuracy was 0.493, with 38 undercalls and no
+overcalls. Hybrid retained 1.000 decision accuracy with no decision
+regressions. The model added 21 generic `model_policy_review` findings, but it
+added zero detailed expected YAML policy ids, so current model value is review
+narration rather than reliable policy-id recall.
 
 ## 4. Discussion
 
@@ -140,16 +158,17 @@ sending extra items to human review.
 
 The real-case diagnostic set adds a different value: it prevents the project
 from overfitting to synthetic examples. Its current result suggests that
-decision routing is conservative on sourced high-risk cases and that the first
-round of policy-id notes has been adjudicated. The next useful expansion is
-not fine-tuning; it is 50 to 100 sourced cases with balanced decisions, label
-confidence, and reviewer notes so rule-only, model-only, and hybrid value can
-be compared without relying on hand-picked high-risk examples.
+decision routing is internally consistent on sourced public examples across
+all three decision labels. The next useful expansion is not fine-tuning; it is
+continued adjudication of model-added value so rule-only, model-only, and
+hybrid behavior can be compared beyond generic review burden.
 
-The model path should not be treated as validated by this run. The current
-comparison only proves graceful unavailable-model handling. A future model
-study should run against a pinned local model, record model status `ok`, and
-compare model-only and hybrid outputs against the deterministic baseline.
+The model path should be treated separately from deterministic reliability.
+The live real-case model-quality run completed all 75 model-required rows with
+status `ok`. Model-only decision accuracy was 0.493, with 38 undercalls and no
+overcalls. Hybrid decision accuracy stayed at 1.000 with zero decision
+regressions. The model added 21 generic `model_policy_review` findings, but it
+added 0 detailed expected YAML policy ids and rescued 0 rule false negatives.
 
 ## 5. Limitations
 
@@ -162,7 +181,7 @@ rewrite quality scoring.
 ## 6. Conclusion
 
 AdLint currently has a reproducible local benchmark for deterministic ad
-preflight checks. The rule-only engine reaches perfect decision accuracy on the
-200-example synthetic benchmark with no current policy-label review notes. The
-next research step is to expand human-reviewed examples and run a pinned
-local-model comparison only when the model endpoint is available.
+preflight checks and a balanced 75-row public-source diagnostic set. The
+rule-only engine reaches perfect decision accuracy on both current eval
+surfaces with no current policy-label review notes. The next research step is
+to keep separating deterministic reliability from measured local-model value.
