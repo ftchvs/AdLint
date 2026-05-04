@@ -173,9 +173,11 @@ generalization misses without forcing rule tuning directly against it.
 The blind model-quality target uses the same default
 `MODEL_EVAL_FLAGS=--ollama-model gpt-oss-safeguard:20b` and writes ignored
 JSON/Markdown artifacts under `evals/results/`.
-If a non-default local model times out while generating verbose JSON, rerun the
-direct `evals/run_eval.py` command with `ADLINT_OLLAMA_NUM_PREDICT=256` to cap
-the model response without changing the dataset or decision thresholds.
+If a non-default local model times out while generating verbose JSON, rerun a
+small direct `evals/run_eval.py` smoke command with `ADLINT_OLLAMA_NUM_PREDICT`
+set to a positive cap before attempting the full dataset. Treat any
+`invalid_response` status as a rejected diagnostic, not as model quality
+evidence.
 
 Local model-quality targets intentionally remain manual/scheduled diagnostics.
 Deterministic rules stay the production baseline unless measured quality

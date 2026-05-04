@@ -385,20 +385,41 @@ changes against rule-only, rescued 0 rule false negatives, and added 24
 generic `model_policy_review` findings with 0 detailed expected YAML policy-id
 hits. The full all-mode run took 2012.816 seconds locally.
 
-A separate model smoke check now verifies the configured local Ollama model on
-the first three seed rows and fails if any model-required row cannot run. The
-latest smoke run completed with model status `ok` for all model-required rows:
+A separate model smoke check verifies the configured local Ollama model on the
+first three seed rows and fails if any model-required row cannot run. Run it
+before full live model-quality jobs. The latest default smoke run completed
+with model status `ok` for all model-required rows:
 
 | Smoke mode | Scored rows | Skipped rows | Decision accuracy | Model status |
 | --- | ---: | ---: | ---: | --- |
 | rule-only | 3 | 0 | 1.000 | `disabled: 3` |
-| model-only | 3 | 0 | 0.667 | `ok: 3` |
+| model-only | 3 | 0 | 0.333 | `ok: 3` |
 | hybrid | 3 | 0 | 1.000 | `ok: 3` |
 
-This proves local model availability. It also shows why model-only should not
-replace deterministic rules yet: the local model still undercalled one health
-review row in the smoke subset and maps concerns to `model_policy_review`
-rather than the detailed YAML policy ids.
+The run took 81.508 seconds. Hybrid made no decision changes, the model added
+2 generic `model_policy_review` findings, and it added 0 detailed expected YAML
+policy ids or rescued rule false negatives.
+
+Alternative local model/tuning checks do not justify expanding model influence:
+
+| Configuration | Runtime | Model-only rows | Model-only accuracy | Hybrid accuracy | Model status | Generic review additions | Detailed policy-id additions | Rescued rule false negatives |
+| --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: |
+| `gpt-oss-safeguard:20b` default smoke | 81.508s | 3 | 0.333 | 1.000 | `ok: 3` | 2 | 0 | 0 |
+| `gpt-oss-safeguard:20b`, `ADLINT_OLLAMA_NUM_PREDICT=128` smoke | 28.081s | 0 | 0.000 | 1.000 | `invalid_response: 3` | 3 | 0 | 0 |
+| `qwen3.5:35b-a3b` blind diagnostic | 2749.144s | 0 | 0.000 | 0.656 | `invalid_response: 90` | 90 | 0 | 0 |
+
+`ADLINT_OLLAMA_NUM_PREDICT=128` is faster but currently breaks structured JSON
+parsing, so it should not become the default tuned setting. The installed
+`qwen3.5:35b-a3b` model produced invalid structured responses on the full blind
+diagnostic and a later smoke attempt was stopped after more than four minutes
+without completed output. The recommended default remains
+`gpt-oss-safeguard:20b` with normal generation settings, and deterministic
+rules remain the production baseline.
+
+These diagnostics prove local model availability, not replacement quality. They
+also show why model-only should not replace deterministic rules yet: the local
+model still undercalls rows and maps concerns to `model_policy_review` rather
+than the detailed YAML policy ids.
 
 The current benchmark test now fails if the adjudicated rule benchmark or
 real-case set produces policy false-positive or false-negative review notes.

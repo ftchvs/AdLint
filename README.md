@@ -353,7 +353,8 @@ make real-world-blind-model-quality
 balanced across 30 approved, 30 needs-review, and 30 high-risk expected
 decisions. It is marked as a rule-tuning holdout and should be used to measure
 generalization before changing deterministic rules. The CI gate uses a 0.90
-decision-accuracy threshold against the current 0.933 rule-only baseline.
+decision-accuracy threshold against the current 0.967 post-triage rule-only
+baseline.
 
 Before opening eval/reliability PRs, run:
 
