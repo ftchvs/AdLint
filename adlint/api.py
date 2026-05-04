@@ -29,6 +29,8 @@ class AnalyzeRequest(BaseModel):
     ollama_model: str | None = None
     logging_enabled: bool = False
     log_path: str | None = None
+    storage_enabled: bool = False
+    storage_path: str | None = None
 
     def to_analyze_config(self) -> dict[str, Any]:
         return self.model_dump(exclude_none=True)

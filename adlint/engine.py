@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import replace
+from pathlib import Path
+from typing import Any, Mapping
+
 from adlint.audit_log import write_run_log
 from adlint.classifiers.ollama import classify_with_ollama
 from adlint.models import AnalysisResult, PolicyHit, Submission
@@ -7,8 +11,10 @@ from adlint.policy import enabled_modules, filter_policies, load_policies
 from adlint.reports import write_reports
 from adlint.rewrites.suggestions import build_rewrites
 from adlint.rules.engine import dedupe_hits, run_rule_checks
+from adlint.scoring.config import ScoringConfig, load_scoring_config, scoring_config_from_dict
 from adlint.scoring.core import decision_for_score, score_hits
 from adlint.scrapers.landing_page import extract_landing_page
+from adlint.storage import record_analysis_run
 
 
 def analyze(
@@ -18,24 +24,13 @@ def analyze(
     output_dir: str | None = None,
     enable_model: bool | None = None,
     ollama_model: str | None = None,
+    scoring_config: ScoringConfig | Mapping[str, Any] | None = None,
+    scoring_config_path: str | Path | None = None,
 ) -> AnalysisResult:
+    resolved_scoring_config = _resolve_scoring_config(scoring_config, scoring_config_path)
     submission = Submission.from_dict(config)
     if enable_model is not None:
-        submission = Submission(
-            platform=submission.platform,
-            country=submission.country,
-            industry=submission.industry,
-            headline=submission.headline,
-            body=submission.body,
-            cta=submission.cta,
-            target_age_range=submission.target_age_range,
-            landing_page_url=submission.landing_page_url,
-            landing_page_html=submission.landing_page_html,
-            policy_modules=submission.policy_modules,
-            model_enabled=enable_model,
-            logging_enabled=submission.logging_enabled,
-            log_path=submission.log_path,
-        )
+        submission = replace(submission, model_enabled=enable_model)
 
     landing_page = extract_landing_page(submission.landing_page_url, submission.landing_page_html)
     policies = filter_policies(load_policies(policy_paths), submission)
@@ -46,8 +41,8 @@ def analyze(
         model_hits, model_info = classify_with_ollama(submission, model=ollama_model)
         hits = dedupe_hits([*hits, *model_hits])
 
-    risk_score = score_hits(hits, submission)
-    decision = decision_for_score(risk_score)
+    risk_score = score_hits(hits, submission, resolved_scoring_config)
+    decision = decision_for_score(risk_score, resolved_scoring_config)
     requires_review = any(hit.requires_review for hit in hits) or decision != "approved"
     recommended_actions = _recommended_actions(hits)
 
@@ -68,7 +63,26 @@ def analyze(
         result.reports = write_reports(result, output_dir)
     if submission.logging_enabled:
         result.reports["log"] = write_run_log(submission, result, submission.log_path)
+    if submission.storage_enabled:
+        result.reports["storage"] = record_analysis_run(submission, result, submission.storage_path)
     return result
+
+
+def _resolve_scoring_config(
+    scoring_config: ScoringConfig | Mapping[str, Any] | None,
+    scoring_config_path: str | Path | None,
+) -> ScoringConfig | None:
+    if scoring_config is not None and scoring_config_path is not None:
+        raise ValueError("Pass scoring_config or scoring_config_path, not both.")
+    if scoring_config_path is not None:
+        return load_scoring_config(scoring_config_path)
+    if scoring_config is None:
+        return None
+    if isinstance(scoring_config, ScoringConfig):
+        return scoring_config
+    if isinstance(scoring_config, Mapping):
+        return scoring_config_from_dict(scoring_config, source="scoring_config")
+    raise TypeError("scoring_config must be a ScoringConfig or mapping.")
 
 
 def _recommended_actions(hits: list[PolicyHit]) -> list[str]:
