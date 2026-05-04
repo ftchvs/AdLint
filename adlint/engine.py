@@ -14,7 +14,6 @@ from adlint.rules.engine import dedupe_hits, run_rule_checks
 from adlint.scoring.config import ScoringConfig, load_scoring_config, scoring_config_from_dict
 from adlint.scoring.core import decision_for_score, score_hits
 from adlint.scrapers.landing_page import extract_landing_page
-from adlint.storage import record_analysis_run
 
 
 def analyze(
@@ -64,6 +63,8 @@ def analyze(
     if submission.logging_enabled:
         result.reports["log"] = write_run_log(submission, result, submission.log_path)
     if submission.storage_enabled:
+        from adlint.storage import record_analysis_run
+
         result.reports["storage"] = record_analysis_run(submission, result, submission.storage_path)
     return result
 
