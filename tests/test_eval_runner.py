@@ -186,6 +186,8 @@ def test_eval_runner_summary_only_preserves_full_output_file(tmp_path, monkeypat
             "run_eval.py",
             str(dataset),
             "--summary-only",
+            "--summary-format",
+            "json",
             "--min-decision-accuracy",
             "0",
             "--output",
@@ -198,18 +200,143 @@ def test_eval_runner_summary_only_preserves_full_output_file(tmp_path, monkeypat
     assert run_eval.main() == 0
 
     stdout = capsys.readouterr().out
+    summary = json.loads(stdout)
     file_metrics = json.loads(output_path.read_text(encoding="utf-8"))
-    assert "AdLint eval summary" in stdout
-    assert "mode: rule-only" in stdout
-    assert "total_rows: 2" in stdout
-    assert "decision_mismatches: 1" in stdout
-    assert "policy_false_negatives: 1" in stdout
-    assert "policy_false_positives: 1" in stdout
-    assert f"json_output: {output_path}" in stdout
-    assert f"markdown_output: {markdown_path}" in stdout
+    assert summary == {
+        "dataset": str(dataset),
+        "decision_accuracy": 0.5,
+        "decision_mismatch_count": 1,
+        "elapsed_seconds": summary["elapsed_seconds"],
+        "mode": "rule-only",
+        "model_status_counts": {"disabled": 2},
+        "outputs": {
+            "json": str(output_path),
+            "markdown": str(markdown_path),
+        },
+        "policy_false_negative_count": 1,
+        "policy_false_positive_count": 1,
+        "scored_rows": 2,
+        "skipped_rows": 0,
+        "summary_version": 1,
+        "top_review_note_row_ids": {
+            "decision_mismatches": ["decision-miss"],
+            "policy_false_negatives": ["decision-miss"],
+            "policy_false_positives": ["policy-fp"],
+        },
+        "total_rows": 2,
+        "confusion_matrix_deltas": [
+            {"actual": "approved", "count": 1, "expected": "high_risk"},
+        ],
+    }
     assert '"results"' not in stdout
     assert file_metrics["results"][0]["id"] == "decision-miss"
     assert "## Review Notes" in markdown_path.read_text(encoding="utf-8")
+
+
+def test_eval_runner_summary_only_can_print_legacy_text(tmp_path, monkeypatch, capsys) -> None:
+    dataset = tmp_path / "dataset.jsonl"
+    dataset.write_text(
+        json.dumps(
+            {
+                "id": "approved-saas",
+                "input": {
+                    "platform": "linkedin",
+                    "industry": "saas",
+                    "headline": "Plan campaign launches",
+                    "body": "Coordinate launch notes.",
+                    "cta": "Learn more",
+                },
+                "expected_decision": "approved",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_eval.py",
+            str(dataset),
+            "--summary-only",
+            "--summary-format",
+            "text",
+        ],
+    )
+
+    assert run_eval.main() == 0
+
+    stdout = capsys.readouterr().out
+    assert "AdLint eval summary" in stdout
+    assert f"dataset: {dataset}" in stdout
+    assert "scored_rows: 1" in stdout
+    assert "decision_mismatches: 0" in stdout
+
+
+def test_compact_summary_reports_all_mode_with_per_mode_payloads() -> None:
+    metrics = {
+        "dataset": "evals/datasets/seed_ads.jsonl",
+        "mode": "all",
+        "elapsed_seconds": 3.21,
+        "modes": {
+            "rule-only": {
+                "dataset": "evals/datasets/seed_ads.jsonl",
+                "mode": "rule-only",
+                "input_examples": 2,
+                "total_examples": 2,
+                "skipped_examples": 0,
+                "decision_accuracy": 0.5,
+                "elapsed_seconds": 0.1,
+                "confusion_matrix": {
+                    "approved": {"approved": 1, "needs_review": 0, "high_risk": 0},
+                    "needs_review": {"approved": 1, "needs_review": 0, "high_risk": 0},
+                    "high_risk": {"approved": 0, "needs_review": 0, "high_risk": 0},
+                },
+                "policy_metrics": {
+                    "privacy_health_data_collection": {
+                        "false_positive_count": 0,
+                        "false_negative_count": 1,
+                    },
+                },
+                "model_status_counts": {"disabled": 2},
+                "review_notes": {
+                    "decision_mismatches": [{"row_id": "miss"}],
+                    "false_positives": [],
+                    "false_negatives": [{"row_id": "miss"}],
+                },
+            },
+            "model-only": {
+                "dataset": "evals/datasets/seed_ads.jsonl",
+                "mode": "model-only",
+                "input_examples": 2,
+                "total_examples": 0,
+                "skipped_examples": 2,
+                "decision_accuracy": 0.0,
+                "elapsed_seconds": 0.2,
+                "confusion_matrix": {},
+                "policy_metrics": {},
+                "model_status_counts": {"unavailable": 2},
+                "review_notes": {
+                    "decision_mismatches": [],
+                    "false_positives": [],
+                    "false_negatives": [],
+                },
+            },
+        },
+    }
+
+    summary = run_eval._compact_summary(metrics)
+
+    assert summary["mode"] == "all"
+    assert summary["dataset"] == "evals/datasets/seed_ads.jsonl"
+    assert summary["modes"]["rule-only"]["confusion_matrix_deltas"] == [
+        {"expected": "needs_review", "actual": "approved", "count": 1}
+    ]
+    assert summary["modes"]["rule-only"]["decision_mismatch_count"] == 1
+    assert summary["modes"]["rule-only"]["policy_false_negative_count"] == 1
+    assert summary["modes"]["rule-only"]["top_review_note_row_ids"]["decision_mismatches"] == ["miss"]
+    assert summary["modes"]["model-only"]["skipped_rows"] == 2
+    assert summary["modes"]["model-only"]["model_status_counts"] == {"unavailable": 2}
 
 
 def test_eval_runner_limit_scores_only_first_rows(tmp_path, monkeypatch, capsys) -> None:
@@ -578,6 +705,26 @@ def test_benchmark_dataset_is_reproducible_labeled_and_large_enough() -> None:
     assert len(dataset_rows) == len({row["id"] for row in dataset_rows})
     assert {row["expected_decision"] for row in dataset_rows} == {"approved", "needs_review", "high_risk"}
     assert dataset_rows == generated_rows
+
+
+def test_benchmark_dataset_includes_meta_policy_rows() -> None:
+    generated_rows = generate_benchmark_dataset.build_rows()
+    meta_rows = [row for row in generated_rows if row["input"].get("platform") == "meta"]
+    meta_policy_ids = {
+        policy_id
+        for row in meta_rows
+        for policy_id in row.get("expected_policy_ids", [])
+        if policy_id.startswith("meta_")
+    }
+
+    assert meta_rows
+    assert {row["expected_decision"] for row in meta_rows} == {"approved", "needs_review", "high_risk"}
+    assert meta_policy_ids == {
+        "meta_personal_attributes_health",
+        "meta_personal_attributes_finance",
+        "meta_health_appearance_results",
+        "meta_branded_content_disclosure",
+    }
 
 
 def test_benchmark_dataset_reports_policy_and_category_precision_recall() -> None:

@@ -4,7 +4,7 @@ BIN := $(VENV)/bin
 STAMP := $(VENV)/.installed
 MODEL_EVAL_FLAGS ?= --ollama-model gpt-oss-safeguard:20b
 
-.PHONY: api dev scan eval benchmark benchmark-data policy-coverage policy-coverage-validate model-benchmark model-smoke pr-preflight real-cases real-cases-ci real-cases-hybrid real-cases-model-quality real-cases-validate real-world-blind-candidates real-world-blind-ci real-world-blind-validate real-world-blind real-world-blind-model-quality test install
+.PHONY: api dev scan eval benchmark benchmark-data policy-coverage policy-coverage-validate rewrite-quality model-benchmark model-smoke pr-preflight real-cases real-cases-ci real-cases-hybrid real-cases-model-quality real-cases-validate real-world-blind-candidates real-world-blind-ci real-world-blind-validate real-world-blind real-world-blind-model-quality research-summary test install
 
 install: $(STAMP)
 
@@ -25,6 +25,12 @@ scan: $(STAMP)
 eval: $(STAMP)
 	$(BIN)/python evals/run_eval.py evals/datasets/seed_ads.jsonl --output evals/results/latest.json
 
+research-summary: $(STAMP)
+	$(BIN)/python evals/run_eval.py evals/datasets/seed_ads.jsonl --summary-only --summary-format json --min-decision-accuracy 0
+	$(BIN)/python evals/run_eval.py evals/datasets/rule_benchmark_v1.jsonl --summary-only --summary-format json --min-decision-accuracy 0
+	$(BIN)/python evals/run_eval.py evals/datasets/real_cases_v1.jsonl --summary-only --summary-format json --min-decision-accuracy 0
+	$(BIN)/python evals/run_eval.py evals/datasets/real_world_blind_v1.jsonl --summary-only --summary-format json --min-decision-accuracy 0
+
 benchmark-data: $(STAMP)
 	$(BIN)/python evals/generate_benchmark_dataset.py
 
@@ -36,6 +42,9 @@ policy-coverage: $(STAMP)
 
 policy-coverage-validate: $(STAMP)
 	$(BIN)/python evals/validate_policy_coverage.py --check docs/policy_coverage_matrix.md
+
+rewrite-quality: $(STAMP)
+	$(BIN)/python evals/rewrite_quality.py evals/datasets/rewrite_quality_v1.jsonl --output evals/results/rewrite_quality_v1.json --markdown-output evals/results/rewrite_quality_v1.md
 
 model-benchmark: $(STAMP)
 	$(BIN)/python evals/run_eval.py evals/datasets/rule_benchmark_v1.jsonl --mode all --output evals/results/model_comparison.json --markdown-output evals/results/model_comparison.md
