@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import ast
+import json
 import re
 import urllib.error
 import urllib.parse
 import urllib.request
 import urllib.robotparser
+from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -36,18 +39,73 @@ CLAIM_KEYWORDS = (
     "salary",
 )
 
+SCRIPT_ASSIGNMENT_RE = re.compile(
+    r"""
+    (?P<key>\b(?:textContent|innerText|innerHTML|outerText|value|placeholder|
+    ariaLabel|label|title|heading|headline|subheadline|body|copy|claim|claims|
+    disclaimer|disclaimers|price|pricing|cta)\b)
+    \s*(?::|=)\s*
+    (?P<quote>["'])(?P<value>(?:\\.|[^\\])*?)(?P=quote)
+    """,
+    re.IGNORECASE | re.VERBOSE | re.DOTALL,
+)
+
+SCRIPT_TEXT_KEYS = (
+    "body",
+    "button",
+    "claim",
+    "copy",
+    "cta",
+    "description",
+    "disclaimer",
+    "headline",
+    "hero",
+    "offer",
+    "price",
+    "pricing",
+    "subheadline",
+    "subtitle",
+    "text",
+    "title",
+)
+
+FORM_TEXT_KEYS = (
+    "field",
+    "form",
+    "input",
+    "label",
+    "lead",
+    "placeholder",
+    "signup",
+)
+
+FORM_VALUE_KEYWORDS = (
+    "address",
+    "birth",
+    "dob",
+    "email",
+    "first name",
+    "full name",
+    "last name",
+    "name",
+    "phone",
+    "signup",
+    "sign up",
+    "zip",
+)
+
 
 def extract_landing_page(url: str | None = None, html: str | None = None) -> LandingPageSnapshot:
     if html:
-        return _parse_html(html, url)
+        return _parse_html_with_errors(html, url)
     if not url:
         return LandingPageSnapshot()
 
     try:
         loaded = _load_url_or_file(url)
     except Exception as exc:  # pragma: no cover - exact platform errors vary
-        return LandingPageSnapshot(url=url, fetch_error=str(exc))
-    return _parse_html(loaded, url)
+        return LandingPageSnapshot(url=url, fetch_error=f"Fetch error: {exc}")
+    return _parse_html_with_errors(loaded, url)
 
 
 def _load_url_or_file(url: str) -> str:
@@ -84,12 +142,20 @@ def _robots_allows(url: str) -> bool:
     return parser.can_fetch("AdLint/0.1", url)
 
 
+def _parse_html_with_errors(html: str, url: str | None) -> LandingPageSnapshot:
+    try:
+        return _parse_html(html, url)
+    except Exception as exc:  # pragma: no cover - defensive parser boundary
+        return LandingPageSnapshot(url=url, fetch_error=f"Parser error: {exc}")
+
+
 def _parse_html(html: str, url: str | None) -> LandingPageSnapshot:
     parser = _LandingPageParser()
     parser.feed(html)
     parser.close()
 
-    texts = _unique(parser.text_chunks)
+    script_text = _extract_script_text(parser.inline_scripts)
+    texts = _unique([*parser.text_chunks, *script_text.text_chunks])
     visible_claims = tuple(item for item in texts if _looks_like_claim(item))[:12]
     pricing_text = tuple(item for item in texts if _looks_like_pricing(item))[:8]
     disclaimers = tuple(item for item in texts if _looks_like_disclaimer(item))[:8]
@@ -100,11 +166,17 @@ def _parse_html(html: str, url: str | None) -> LandingPageSnapshot:
         title=parser.title,
         headings=tuple(_unique(parser.headings))[:10],
         visible_claims=visible_claims,
-        forms=tuple(_unique(parser.forms))[:8],
+        forms=tuple(_unique([*parser.forms, *script_text.forms]))[:8],
         pricing_text=pricing_text,
         disclaimers=disclaimers,
         tracking_scripts=tracking_scripts,
     )
+
+
+@dataclass(frozen=True)
+class _ScriptText:
+    text_chunks: tuple[str, ...]
+    forms: tuple[str, ...]
 
 
 class _LandingPageParser(HTMLParser):
@@ -114,6 +186,7 @@ class _LandingPageParser(HTMLParser):
         self.headings: list[str] = []
         self.forms: list[str] = []
         self.scripts: list[str] = []
+        self.inline_scripts: list[str] = []
         self.text_chunks: list[str] = []
         self._tag_stack: list[str] = []
         self._buffer: list[str] = []
@@ -149,6 +222,7 @@ class _LandingPageParser(HTMLParser):
             inline = _clean_text(" ".join(self._script_buffer))
             if inline:
                 self.scripts.append(inline)
+                self.inline_scripts.append(inline)
             self._script_buffer = []
         if tag == "form":
             label = ", ".join(_unique(self._form_labels)) or "form detected"
@@ -178,6 +252,145 @@ def _detect_trackers(scripts: list[str]) -> tuple[str, ...]:
     return tuple(found)
 
 
+def _extract_script_text(scripts: list[str]) -> _ScriptText:
+    text_chunks: list[str] = []
+    forms: list[str] = []
+    for script in scripts:
+        for raw_text, path in _script_json_strings(script):
+            clean = _clean_script_text(raw_text)
+            if not clean:
+                continue
+            if _looks_like_script_form_text(clean, path):
+                forms.append(clean)
+            if _looks_like_script_page_text(clean, path):
+                text_chunks.append(clean)
+
+        for match in SCRIPT_ASSIGNMENT_RE.finditer(script):
+            path = (match.group("key"),)
+            clean = _clean_script_text(_decode_script_string(match.group("quote"), match.group("value")))
+            if not clean:
+                continue
+            if _looks_like_script_form_text(clean, path):
+                forms.append(clean)
+            if _looks_like_script_page_text(clean, path):
+                text_chunks.append(clean)
+
+    return _ScriptText(text_chunks=tuple(text_chunks), forms=tuple(forms))
+
+
+def _script_json_strings(script: str) -> list[tuple[str, tuple[str, ...]]]:
+    strings: list[tuple[str, tuple[str, ...]]] = []
+    seen_candidates: set[str] = set()
+    for candidate in _json_candidates(script):
+        if candidate in seen_candidates:
+            continue
+        seen_candidates.add(candidate)
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        strings.extend(_walk_json_strings(parsed))
+    return strings
+
+
+def _json_candidates(script: str) -> list[str]:
+    stripped = script.strip().rstrip(";")
+    candidates: list[str] = []
+    if stripped.startswith(("{", "[")):
+        candidates.append(stripped)
+
+    for match in re.finditer(r"=\s*([{[])", script):
+        candidate = _balanced_json_slice(script, match.start(1))
+        if candidate:
+            candidates.append(candidate)
+    return candidates
+
+
+def _balanced_json_slice(text: str, start: int) -> str | None:
+    closing_for = {"{": "}", "[": "]"}
+    stack: list[str] = []
+    quote: str | None = None
+    escaped = False
+
+    for index in range(start, len(text)):
+        char = text[index]
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+
+        if char in {'"', "'"}:
+            quote = char
+            continue
+        if char in closing_for:
+            stack.append(closing_for[char])
+            continue
+        if stack and char == stack[-1]:
+            stack.pop()
+            if not stack:
+                return text[start : index + 1]
+    return None
+
+
+def _walk_json_strings(value: object, path: tuple[str, ...] = ()) -> list[tuple[str, tuple[str, ...]]]:
+    if isinstance(value, str):
+        return [(value, path)]
+    if isinstance(value, dict):
+        result: list[tuple[str, tuple[str, ...]]] = []
+        for key, child in value.items():
+            result.extend(_walk_json_strings(child, (*path, str(key))))
+        return result
+    if isinstance(value, list):
+        result = []
+        for child in value:
+            result.extend(_walk_json_strings(child, path))
+        return result
+    return []
+
+
+def _decode_script_string(quote: str, value: str) -> str:
+    try:
+        decoded = ast.literal_eval(f"{quote}{value}{quote}")
+    except (SyntaxError, ValueError):
+        return value
+    return str(decoded)
+
+
+def _looks_like_script_page_text(text: str, path: tuple[str, ...]) -> bool:
+    if not _looks_like_human_text(text):
+        return False
+    if _looks_like_claim(text) or _looks_like_pricing(text) or _looks_like_disclaimer(text):
+        return True
+    path_text = ".".join(path).lower()
+    return any(key in path_text for key in SCRIPT_TEXT_KEYS)
+
+
+def _looks_like_script_form_text(text: str, path: tuple[str, ...]) -> bool:
+    if not _looks_like_human_text(text, allow_short=True):
+        return False
+    lower = text.lower()
+    path_text = ".".join(path).lower()
+    return any(key in path_text for key in FORM_TEXT_KEYS) and any(
+        keyword in lower for keyword in FORM_VALUE_KEYWORDS
+    )
+
+
+def _looks_like_human_text(text: str, *, allow_short: bool = False) -> bool:
+    if len(text) > 280:
+        return False
+    lower = text.lower()
+    if lower.startswith(("http://", "https://", "mailto:", "tel:")):
+        return False
+    if re.fullmatch(r"[#./:_\-a-z0-9]+", lower):
+        return False
+    words = re.findall(r"[A-Za-z][A-Za-z'-]*", text)
+    return len(words) >= (1 if allow_short else 2)
+
+
 def _looks_like_claim(text: str) -> bool:
     lower = text.lower()
     return any(keyword in lower for keyword in CLAIM_KEYWORDS)
@@ -205,6 +418,11 @@ def _looks_like_disclaimer(text: str) -> bool:
 
 def _clean_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _clean_script_text(text: str) -> str:
+    without_tags = re.sub(r"<[^>]+>", " ", text)
+    return _clean_text(without_tags)
 
 
 def _unique(items: list[str]) -> list[str]:

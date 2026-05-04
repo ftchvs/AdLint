@@ -1,0 +1,9 @@
+{
+  "platform": "meta",
+  "country": "US",
+  "industry": "saas",
+  "headline": "Plan campaign launches in one shared workspace",
+  "body": "Coordinate briefs, approvals, and launch notes with your marketing team.",
+  "cta": "Learn more",
+  "policy_modules": ["platform", "brand_safety", "disclosure"]
+}

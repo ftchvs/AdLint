@@ -1,0 +1,67 @@
+policies:
+  - id: meta_personal_attributes_health
+    severity: high
+    category: platform_policy
+    description: Meta ads should not imply knowledge of a viewer's health, body, or medical condition.
+    modules: [platform]
+    platforms: [meta]
+    industries: [health, wellness]
+    signals:
+      - are you overweight
+      - do you have diabetes
+      - diagnosed with
+      - struggling with anxiety
+      - your chronic pain
+      - tired of your symptoms
+    recommended_action: Reframe the ad around the product or service benefit without implying personal health attributes.
+    rewrite_strategy: neutral_targeting
+
+  - id: meta_personal_attributes_finance
+    severity: high
+    category: platform_policy
+    description: Meta ads should not imply knowledge of a viewer's financial hardship or credit status.
+    modules: [platform]
+    platforms: [meta]
+    industries: [finance]
+    signals:
+      - struggling with debt
+      - bad credit
+      - behind on bills
+      - are you broke
+      - can't pay rent
+      - your credit problems
+    recommended_action: Remove direct references to the viewer's financial status and describe the offer neutrally.
+    rewrite_strategy: neutral_targeting
+
+  - id: meta_health_appearance_results
+    severity: high
+    category: platform_policy
+    description: Meta health and appearance ads can be rejected for unrealistic results or negative self-perception framing.
+    modules: [platform]
+    platforms: [meta]
+    industries: [health, wellness]
+    signals:
+      - before and after
+      - transformation photo
+      - lose * pounds
+      - melts fat
+      - belly fat
+      - dramatic results
+    recommended_action: Avoid transformation framing and use qualified wellness-support language.
+    rewrite_strategy: wellness_support
+
+  - id: meta_branded_content_disclosure
+    severity: medium
+    category: platform_policy
+    description: Meta branded-content and creator integrations may need clear sponsorship tagging and disclosures.
+    modules: [platform]
+    platforms: [meta]
+    industries: [creator, wellness, health, finance]
+    signals:
+      - paid partnership
+      - affiliate
+      - sponsored
+      - promo code
+      - partner product
+    recommended_action: Confirm branded-content tagging and sponsorship or affiliate disclosures before launch.
+    rewrite_strategy: add_disclosure

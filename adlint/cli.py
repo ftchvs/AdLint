@@ -37,17 +37,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--ollama-model",
         help="Ollama model name, defaulting to ADLINT_OLLAMA_MODEL or gpt-oss-safeguard:20b.",
     )
+    scan_parser.add_argument(
+        "--scoring-config",
+        help="Path to optional scoring.yml threshold and weight overrides.",
+    )
+    scan_parser.add_argument(
+        "--enable-storage",
+        action="store_true",
+        help="Opt into SQLite metadata storage for this scan.",
+    )
+    scan_parser.add_argument(
+        "--storage-path",
+        help="SQLite metadata database path. Passing this also opts into storage.",
+    )
 
     args = parser.parse_args(argv)
 
     if args.command == "scan":
         config = load_config(args.config)
+        if args.enable_storage or args.storage_path:
+            config["storage_enabled"] = True
+        if args.storage_path:
+            config["storage_path"] = args.storage_path
         result = analyze(
             config,
             policy_paths=args.policy_path,
             output_dir=args.output_dir,
             enable_model=args.enable_model or None,
             ollama_model=args.ollama_model,
+            scoring_config_path=args.scoring_config,
         )
         if args.format == "markdown":
             print(to_markdown(result))

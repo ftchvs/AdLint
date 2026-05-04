@@ -64,7 +64,7 @@ policies:
     category: brand_safety
     description: Sensitive social issues can require review for tone, adjacency, and targeting.
     modules: [brand_safety]
-    signals: [immigration, race, religion, gender identity, social issue]
+    signals: [immigration, race, religion, faith leaders, gender identity, social issue]
     recommended_action: Review suitability level, targeting, and creative tone.
     iab_taxonomy:
       content_taxonomy_version: "2.2"

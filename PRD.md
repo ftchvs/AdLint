@@ -45,7 +45,8 @@ The review target includes:
   mismatch checks, and health-adjacent tracking-pixel review flags are
   implemented.
 - Scoring: risk scores and decisions are computed with transparent severity,
-  evidence, regulated-industry, landing-page, privacy, and brand-safety weights.
+  evidence, regulated-industry, landing-page, privacy, and brand-safety weights,
+  with optional `scoring.yml` threshold and weight overrides.
 - Reports: JSON and Markdown reports include policy hits, evidence,
   recommended actions, rewrites, landing-page details, and the decision-support
   disclaimer.
@@ -60,6 +61,8 @@ The review target includes:
   boundary docs exist in the repo.
 - Opt-in logging: `logging_enabled` and `log_path` write JSONL run logs only
   when explicitly enabled.
+- Opt-in SQLite metadata storage records scan and eval summaries only when
+  explicitly enabled, without raw ad or landing-page fields.
 
 ### 2.2 Partial or future work
 
@@ -67,8 +70,8 @@ The following are not part of the implemented MVP review target:
 
 - A 200-500 example benchmark with confusion matrices and reviewed failure
   modes.
-- `scoring.yml` configurability for thresholds and weights.
-- SQLite storage for eval datasets, run metadata, or anonymized logs.
+- Raw submission persistence. Optional SQLite storage is metadata-only and
+  disabled by default.
 - Playwright or `trafilatura` extraction. The MVP uses a standard-library HTML
   parser and robots-aware URL fetching.
 - Verified live Ollama model quality. Ollama integration exists for hybrid
@@ -399,8 +402,8 @@ Representative output shape:
 | FR-16 | Implemented | Users can enable or disable policy modules through `policy_modules`. |
 | FR-17 | Implemented | `make dev`, `make scan`, `make api`, `make eval`, and `make test` provide local run paths. |
 | FR-18 | Implemented | A one-page Web UI lets users paste copy, select settings, choose a local model, keep the Local model toggle on by default or turn it off, analyze through the existing API, review results, copy rewrites, and export JSON or Markdown. |
-| FR-19 | Future | `scoring.yml` will let teams tune thresholds and weights without code changes. |
-| FR-20 | Future | SQLite storage may support eval datasets, run metadata, and anonymized logs. |
+| FR-19 | Implemented | `scoring.yml` lets teams tune thresholds and weights without code changes when passed to the CLI or library engine. |
+| FR-20 | Implemented | Optional SQLite metadata storage records scan and eval summaries without raw ad or landing-page submissions, and remains disabled by default. |
 
 ## 11. Policy modules
 
@@ -485,8 +488,9 @@ Roadmap architecture:
 - Frontend: lightweight static Web UI served by FastAPI.
 - Scraping: Playwright for JavaScript-enabled pages, with `trafilatura` as a
   static extraction fallback.
-- Storage: SQLite for eval datasets, run metadata, and optional anonymized logs.
-- Config: future `scoring.yml` for threshold and weight calibration.
+- Storage: optional SQLite metadata for scan and eval summaries, disabled by
+  default and separate from raw submissions.
+- Config: optional `scoring.yml` for threshold and weight calibration.
 - Model validation: verified local Ollama runs with benchmarked rule-only,
   model-only, and hybrid comparisons.
 
@@ -537,10 +541,39 @@ Current decision thresholds:
 ```
 
 If the highest severity is below `high`, the MVP caps the score at `0.69` so
-medium-only findings stay in `needs_review`. Thresholds and weights should
-move to a future `scoring.yml` file so teams can calibrate sensitivity by use
-case. High-severity health, privacy, and safety categories should favor recall
-over precision.
+medium-only findings stay in `needs_review`. Teams can pass an optional
+`scoring.yml` file to calibrate thresholds and weights for a specific workflow
+or eval run without editing code.
+
+All fields are optional. Omitted fields keep the built-in defaults.
+
+```yaml
+thresholds:
+  needs_review: 0.35
+  high_risk: 0.70
+  max_without_high_severity: 0.69
+weights:
+  severity:
+    low: 0.20
+    medium: 0.40
+    high: 0.70
+    critical: 0.90
+  evidence_count:
+    per_item: 0.02
+    max: 0.12
+  regulated_category: 0.08
+  landing_page_mismatch: 0.08
+  privacy_tracking: 0.10
+  brand_safety: 0.05
+regulated_industries:
+  - health
+  - wellness
+  - finance
+```
+
+Invalid configs fail fast with a clear path to the invalid key or value.
+High-severity health, privacy, and safety categories should favor recall over
+precision.
 
 ## 14. Evaluation plan
 
@@ -619,7 +652,7 @@ Future benchmark reports should include:
 - Keep README and PRD aligned with the actual MVP.
 - Validate local install, tests, CLI examples, API examples, and eval command.
 - Preserve the decision-support and legal-boundary language throughout docs.
-- Avoid claiming live model quality or production storage behavior.
+- Avoid claiming live model quality or raw production submission storage.
 - Add focused tests for CLI output, reports, policy loading, documented
   examples, eval runner metrics, and opt-in logging boundaries.
 

@@ -72,3 +72,22 @@ def test_filter_policies_applies_platform_and_industry_filters(tmp_path) -> None
     assert [policy.id for policy in filter_policies(policies, matching)] == ["custom_health_claim"]
     assert filter_policies(policies, wrong_platform) == []
     assert filter_policies(policies, wrong_industry) == []
+
+
+def test_bundled_meta_ads_policy_module_is_narrow_and_platform_scoped() -> None:
+    meta_policy_ids = {
+        "meta_personal_attributes_health",
+        "meta_personal_attributes_finance",
+        "meta_health_appearance_results",
+        "meta_branded_content_disclosure",
+    }
+
+    policies = {policy.id: policy for policy in load_policies()}
+
+    assert meta_policy_ids <= set(policies)
+    for policy_id in meta_policy_ids:
+        policy = policies[policy_id]
+        assert policy.category == "platform_policy"
+        assert policy.modules == ("platform",)
+        assert policy.platforms == ("meta",)
+        assert policy.signals

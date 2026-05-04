@@ -6,7 +6,7 @@ platform approval.
 
 ## Datasets
 
-- `datasets/seed_ads.jsonl`: 50-example smoke set.
+- `datasets/seed_ads.jsonl`: 54-example smoke set.
 - `datasets/rule_benchmark_v1.jsonl`: 200-example deterministic benchmark.
 - `datasets/real_cases_v1.jsonl`: 75 public-source, paraphrased real-case
   diagnostics balanced across 25 `approved`, 25 `needs_review`, and 25
@@ -17,6 +17,9 @@ platform approval.
   holdout rows balanced across 30 `approved`, 30 `needs_review`, and 30
   `high_risk` expected decisions. These rows remain separate from rule tuning
   until after baseline reporting.
+- `datasets/rewrite_quality_v1.jsonl`: sampled rewrite-quality annotations
+  for deterministic safer rewrites. Rows include rubric checks and minimum
+  scores for clarity, risk reduction, policy fit, and intent preservation.
 
 Regenerate `rule_benchmark_v1.jsonl`:
 
@@ -36,6 +39,43 @@ Validate or refresh policy coverage inventory:
 make policy-coverage-validate
 make policy-coverage
 ```
+
+Run rewrite-quality evaluation separately from decision accuracy:
+
+```bash
+make rewrite-quality
+```
+
+`evals/rewrite_quality.py` reports a top-level `rewrite_quality` section and
+sets `decision_accuracy.measured` to `false`. The default generator is
+`deterministic`; model-generated rewrites are intentionally not evaluated until
+deterministic rewrites remain a stable baseline.
+
+Rewrite limitations:
+
+- Deterministic rewrites are conservative templates, not final marketing copy.
+- The rubric checks reviewer usefulness, not legal compliance or platform
+  approval.
+- Generic rewrites may preserve less brand voice than a human editor would.
+- Model rewrite quality is intentionally out of scope until a model generator
+  can beat the deterministic baseline on the same rubric.
+
+Examples in `rewrite_quality_v1` cover a quantified weight-loss claim that
+should become qualified wellness/nutrition copy, a health-form tracking row
+that should shift to consent and privacy review language, and a cure claim
+that should become general wellness support with professional-consult wording.
+
+Run compact research-loop summaries:
+
+```bash
+make research-summary
+```
+
+The target prints deterministic JSON summaries for the seed, benchmark,
+real-case, and blind-holdout datasets. These summaries include row counts,
+decision accuracy, decision mismatches, confusion deltas, policy false
+positive/negative counts, top review-note row IDs, model status counts, and
+elapsed seconds.
 
 The seed and benchmark datasets are complete-coverage gates for current
 policy ids. `real_cases_v1` is included in the inventory, but it remains
@@ -133,9 +173,11 @@ generalization misses without forcing rule tuning directly against it.
 The blind model-quality target uses the same default
 `MODEL_EVAL_FLAGS=--ollama-model gpt-oss-safeguard:20b` and writes ignored
 JSON/Markdown artifacts under `evals/results/`.
-If a non-default local model times out while generating verbose JSON, rerun the
-direct `evals/run_eval.py` command with `ADLINT_OLLAMA_NUM_PREDICT=256` to cap
-the model response without changing the dataset or decision thresholds.
+If a non-default local model times out while generating verbose JSON, rerun a
+small direct `evals/run_eval.py` smoke command with `ADLINT_OLLAMA_NUM_PREDICT`
+set to a positive cap before attempting the full dataset. Treat any
+`invalid_response` status as a rejected diagnostic, not as model quality
+evidence.
 
 Local model-quality targets intentionally remain manual/scheduled diagnostics.
 Deterministic rules stay the production baseline unless measured quality
@@ -156,6 +198,19 @@ Optional fields:
   not available in the current YAML policy files.
 - Metadata fields such as `coverage_tags`, `label_basis`, or
   `label_rationale` may be added later. The runner ignores unknown fields.
+
+Rewrite-quality rows use a separate annotation format:
+
+- `id`: stable row id.
+- `input`: ad submission payload accepted by `adlint.engine.analyze`.
+- `expected_policy_ids`: expected policy ids that should drive the rewrite.
+- `quality_checks`: reviewer checks including `forbidden_terms`,
+  `required_terms`, `risk_reduction_terms`, `intent_terms`, and optional length
+  bounds.
+- `min_scores`: minimum 1-5 scores for `clarity`, `risk_reduction`,
+  `policy_fit`, and `intent_preservation`.
+- `reviewer_rationale`: short human note explaining what a good rewrite should
+  preserve or remove.
 
 Real-case rows are stricter. `evals/validate_real_cases.py` requires source and
 label metadata:

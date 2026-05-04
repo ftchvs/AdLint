@@ -124,6 +124,8 @@ class Submission:
     model_enabled: bool = False
     logging_enabled: bool = False
     log_path: str | None = None
+    storage_enabled: bool = False
+    storage_path: str | None = None
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "Submission":
@@ -142,6 +144,8 @@ class Submission:
             model_enabled=bool(raw.get("model_enabled", False)),
             logging_enabled=bool(raw.get("logging_enabled", False)),
             log_path=raw.get("log_path"),
+            storage_enabled=bool(raw.get("storage_enabled", False)),
+            storage_path=raw.get("storage_path"),
         )
 
     def ad_fields(self) -> dict[str, str]:

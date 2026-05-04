@@ -44,6 +44,7 @@ policies:
     signals:
       - guaranteed approval
       - double your money
+      - projected return
       - risk-free investment
       - fix your credit
     recommended_action: Remove guaranteed financial outcomes and add clear eligibility context.

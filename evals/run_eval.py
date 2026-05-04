@@ -64,6 +64,12 @@ def main() -> int:
         action="store_true",
         help="Print a compact summary to stdout while preserving full JSON/Markdown outputs.",
     )
+    parser.add_argument(
+        "--summary-format",
+        choices=("json", "text"),
+        default="text",
+        help="Summary format used with --summary-only. Text is CI-readable; JSON is deterministic and machine-readable.",
+    )
     args = parser.parse_args()
 
     rows = _load_rows(Path(args.dataset))
@@ -93,6 +99,7 @@ def main() -> int:
             ollama_model=args.ollama_model,
             max_review_notes=args.max_review_notes,
         )
+    _attach_dataset(metrics, args.dataset)
 
     if args.output:
         output_path = Path(args.output)
@@ -105,7 +112,14 @@ def main() -> int:
         markdown_path.write_text(_markdown_report(metrics), encoding="utf-8")
 
     if args.summary_only:
-        print(_summary_report(metrics, json_output=args.output, markdown_output=args.markdown_output))
+        print(
+            _summary_report(
+                metrics,
+                json_output=args.output,
+                markdown_output=args.markdown_output,
+                summary_format=args.summary_format,
+            )
+        )
     else:
         print(json.dumps(metrics, indent=2, sort_keys=True))
     return 0 if _passes(metrics, min_accuracy=args.min_decision_accuracy, require_model=args.require_model) else 1
@@ -137,6 +151,14 @@ def _run_eval(
     return metrics
 
 
+def _attach_dataset(metrics: dict[str, Any], dataset: str) -> None:
+    metrics["dataset"] = dataset
+    if metrics.get("mode") == "all":
+        for mode_metrics in metrics.get("modes", {}).values():
+            if isinstance(mode_metrics, dict):
+                _attach_dataset(mode_metrics, dataset)
+
+
 def _passes(metrics: dict[str, Any], *, min_accuracy: float, require_model: bool) -> bool:
     if metrics.get("mode") == "all":
         return all(
@@ -150,36 +172,141 @@ def _passes(metrics: dict[str, Any], *, min_accuracy: float, require_model: bool
     return metrics["decision_accuracy"] >= min_accuracy
 
 
-def _summary_report(metrics: dict[str, Any], *, json_output: str | None = None, markdown_output: str | None = None) -> str:
+def _summary_report(
+    metrics: dict[str, Any],
+    *,
+    json_output: str | None = None,
+    markdown_output: str | None = None,
+    summary_format: str = "json",
+) -> str:
+    summary = _compact_summary(metrics, json_output=json_output, markdown_output=markdown_output)
+    if summary_format == "json":
+        return json.dumps(summary, sort_keys=True)
+
     lines = ["AdLint eval summary"]
-    if metrics.get("mode") == "all":
-        lines.append(f"mode: {metrics.get('mode')}")
-        lines.append(f"elapsed_seconds: {metrics.get('elapsed_seconds', 0)}")
-        for mode, mode_metrics in metrics["modes"].items():
+    if summary.get("mode") == "all":
+        lines.extend(_summary_lines(summary, include_review_rows=False))
+        for mode, mode_summary in summary["modes"].items():
             lines.append("")
-            lines.extend(f"{mode}.{line}" for line in _summary_lines(mode_metrics))
+            lines.extend(f"{mode}.{line}" for line in _summary_lines(mode_summary))
     else:
-        lines.extend(_summary_lines(metrics))
-    lines.extend(
-        [
-            f"json_output: {json_output or '<none>'}",
-            f"markdown_output: {markdown_output or '<none>'}",
-        ]
-    )
+        lines.extend(_summary_lines(summary))
+    outputs = summary.get("outputs", {})
+    lines.append(f"json_output: {outputs.get('json') or '<none>'}")
+    lines.append(f"markdown_output: {outputs.get('markdown') or '<none>'}")
     return "\n".join(lines)
 
 
-def _summary_lines(metrics: dict[str, Any]) -> list[str]:
-    review_counts = _review_note_counts(metrics)
-    return [
-        f"mode: {metrics.get('mode', 'rule-only')}",
-        f"total_rows: {metrics.get('total_examples', 0)}",
-        f"decision_accuracy: {float(metrics.get('decision_accuracy', 0.0)):.3f}",
-        f"decision_mismatches: {review_counts['decision_mismatches']}",
-        f"policy_false_negatives: {review_counts['policy_false_negatives']}",
-        f"policy_false_positives: {review_counts['policy_false_positives']}",
-        f"elapsed_seconds: {metrics.get('elapsed_seconds', 0)}",
+def _compact_summary(
+    metrics: dict[str, Any],
+    *,
+    json_output: str | None = None,
+    markdown_output: str | None = None,
+) -> dict[str, Any]:
+    if metrics.get("mode") == "all":
+        return {
+            "summary_version": 1,
+            "dataset": metrics.get("dataset", "<unknown>"),
+            "mode": "all",
+            "elapsed_seconds": metrics.get("elapsed_seconds", 0),
+            "modes": {
+                mode: _compact_summary(mode_metrics)
+                for mode, mode_metrics in sorted(metrics.get("modes", {}).items())
+            },
+            "outputs": {
+                "json": json_output,
+                "markdown": markdown_output,
+            },
+        }
+
+    review_notes = metrics.get("review_notes", {})
+    return {
+        "summary_version": 1,
+        "dataset": metrics.get("dataset", "<unknown>"),
+        "mode": metrics.get("mode", "rule-only"),
+        "total_rows": int(metrics.get("input_examples", 0)),
+        "scored_rows": int(metrics.get("total_examples", 0)),
+        "skipped_rows": int(metrics.get("skipped_examples", 0)),
+        "decision_accuracy": float(metrics.get("decision_accuracy", 0.0)),
+        "decision_mismatch_count": _decision_mismatch_count(metrics),
+        "confusion_matrix_deltas": _confusion_matrix_deltas(metrics),
+        "policy_false_positive_count": _policy_metric_count(metrics, "false_positive_count"),
+        "policy_false_negative_count": _policy_metric_count(metrics, "false_negative_count"),
+        "top_review_note_row_ids": {
+            "decision_mismatches": _review_note_row_ids(review_notes.get("decision_mismatches", [])),
+            "policy_false_positives": _review_note_row_ids(review_notes.get("false_positives", [])),
+            "policy_false_negatives": _review_note_row_ids(review_notes.get("false_negatives", [])),
+        },
+        "model_status_counts": dict(sorted(metrics.get("model_status_counts", {}).items())),
+        "elapsed_seconds": metrics.get("elapsed_seconds", 0),
+        "outputs": {
+            "json": json_output,
+            "markdown": markdown_output,
+        },
+    }
+
+
+def _summary_lines(summary: dict[str, Any], *, include_review_rows: bool = True) -> list[str]:
+    lines = [
+        f"dataset: {summary.get('dataset', '<unknown>')}",
+        f"mode: {summary.get('mode', 'rule-only')}",
+        f"total_rows: {summary.get('total_rows', 0)}",
+        f"scored_rows: {summary.get('scored_rows', 0)}",
+        f"skipped_rows: {summary.get('skipped_rows', 0)}",
+        f"decision_accuracy: {float(summary.get('decision_accuracy', 0.0)):.3f}",
+        f"decision_mismatches: {summary.get('decision_mismatch_count', 0)}",
+        f"policy_false_negatives: {summary.get('policy_false_negative_count', 0)}",
+        f"policy_false_positives: {summary.get('policy_false_positive_count', 0)}",
+        f"model_status_counts: {summary.get('model_status_counts', {})}",
+        f"elapsed_seconds: {summary.get('elapsed_seconds', 0)}",
     ]
+    if include_review_rows:
+        rows = summary.get("top_review_note_row_ids", {})
+        lines.append(f"top_decision_mismatch_rows: {rows.get('decision_mismatches', [])}")
+        lines.append(f"top_policy_false_negative_rows: {rows.get('policy_false_negatives', [])}")
+        lines.append(f"top_policy_false_positive_rows: {rows.get('policy_false_positives', [])}")
+    return lines
+
+
+def _confusion_matrix_deltas(metrics: dict[str, Any]) -> list[dict[str, int | str]]:
+    matrix = metrics.get("confusion_matrix", {})
+    if not isinstance(matrix, dict):
+        return []
+    labels = _ordered_summary_labels(matrix)
+    deltas: list[dict[str, int | str]] = []
+    for expected in labels:
+        actual_counts = matrix.get(expected, {})
+        if not isinstance(actual_counts, dict):
+            continue
+        for actual in labels:
+            if actual == expected:
+                continue
+            count = int(actual_counts.get(actual, 0))
+            if count:
+                deltas.append({"expected": expected, "actual": actual, "count": count})
+    return deltas
+
+
+def _ordered_summary_labels(matrix: dict[str, Any]) -> list[str]:
+    labels = set(matrix)
+    for actual_counts in matrix.values():
+        if isinstance(actual_counts, dict):
+            labels.update(actual_counts)
+    return [label for label in DECISION_LABELS if label in labels] + sorted(labels - set(DECISION_LABELS))
+
+
+def _review_note_row_ids(notes: list[dict[str, Any]], *, limit: int = 5) -> list[str]:
+    row_ids: list[str] = []
+    seen: set[str] = set()
+    for note in notes:
+        row_id = str(note.get("row_id", ""))
+        if not row_id or row_id in seen:
+            continue
+        seen.add(row_id)
+        row_ids.append(row_id)
+        if len(row_ids) >= limit:
+            break
+    return row_ids
 
 
 def _review_note_counts(metrics: dict[str, Any]) -> dict[str, int]:

@@ -21,9 +21,11 @@ platform approval or make definitive statutory violation determinations.
 - YAML policy files under `adlint/policies/`, plus custom policy paths.
 - Deterministic rule engine with policy-module, platform, and industry filters.
 - Transparent score thresholds for `approved`, `needs_review`, and `high_risk`.
+- Optional `scoring.yml` threshold and weight overrides for team calibration.
 - JSON stdout, Markdown stdout, and paired JSON/Markdown report files.
 - Safer rewrite suggestions for high-risk and review-required findings.
 - Opt-in JSONL run logging for local evaluation workflows.
+- Opt-in SQLite metadata storage for scan summaries and eval scores.
 - Seed, benchmark, public-source real-case, and blind web-sourced eval runners.
 - Tests covering the CLI, API, policy loading, reports, documented examples,
   eval runner, and opt-in logging behavior.
@@ -35,9 +37,8 @@ platform approval or make definitive statutory violation determinations.
   public-source set and 90-row blind holdout are balanced and useful for
   diagnostics, but still curated rather than randomly sampled production
   traffic.
-- `scoring.yml` configurability; scoring weights currently live in Python.
-- SQLite or other durable storage; raw submissions are not persisted by
-  default.
+- Durable raw submission storage. Raw ad copy and landing-page submissions are
+  not persisted by default, and optional SQLite storage is metadata-only.
 - Playwright or trafilatura extraction. The current landing-page extractor is
   a small stdlib HTML parser that can read inline HTML, local files, or
   fetchable HTML URLs.
@@ -73,6 +74,7 @@ make eval  # run the seed evals and write evals/results/latest.json
 make benchmark    # run the 200-row synthetic policy regression benchmark
 make policy-coverage           # refresh docs/policy_coverage_matrix.md
 make policy-coverage-validate  # check the committed coverage matrix
+make rewrite-quality # run the deterministic rewrite-quality rubric eval
 make pr-preflight # verify generated eval assets before opening an eval PR
 make real-cases   # run balanced public-source real-case diagnostics
 make real-cases-ci # run the strict real-case CI gate
@@ -80,6 +82,7 @@ make real-cases-model-quality  # run the live local-model quality comparison
 make real-world-blind           # run blind web-sourced holdout diagnostics
 make real-world-blind-ci        # run the conservative blind holdout CI gate
 make real-world-blind-model-quality  # run live model quality on the blind holdout
+make research-summary # print compact JSON summaries for research loops
 make test  # run pytest
 ```
 
@@ -101,9 +104,14 @@ adlint scan <config>
 - `--output-dir <dir>` writes `adlint-report.json` and `adlint-report.md`.
 - `--policy-path <path>` loads a policy YAML file or directory. Pass it more
   than once to combine paths.
+- `--scoring-config <path>` loads optional threshold and weight overrides,
+  typically from `scoring.yml`.
 - `--enable-model` calls the local Ollama-compatible classifier in addition to
   deterministic rules.
 - `--ollama-model <name>` overrides `ADLINT_OLLAMA_MODEL`.
+- `--enable-storage` writes metadata-only SQLite scan storage.
+- `--storage-path <path>` sets the SQLite metadata database path and opts into
+  storage.
 
 Example config:
 
@@ -121,7 +129,49 @@ Example config:
 ```
 
 Optional input fields include `target_age_range`, `landing_page_url`,
-`model_enabled`, `ollama_model`, `logging_enabled`, and `log_path`.
+`model_enabled`, `ollama_model`, `logging_enabled`, `log_path`,
+`storage_enabled`, and `storage_path`.
+
+## Scoring configuration
+
+By default, AdLint uses the built-in MVP scoring weights and thresholds. To
+calibrate sensitivity for a team or eval run, pass a `scoring.yml` file:
+
+```bash
+adlint scan examples/high_risk_tiktok_health.json \
+  --scoring-config scoring.yml
+```
+
+All fields are optional; omitted fields keep the built-in defaults. Values must
+be numbers from `0.0` to `1.0`, thresholds must be ordered, and severity weights
+must stay ordered from `low` through `critical`.
+
+```yaml
+thresholds:
+  needs_review: 0.35
+  high_risk: 0.70
+  max_without_high_severity: 0.69
+weights:
+  severity:
+    low: 0.20
+    medium: 0.40
+    high: 0.70
+    critical: 0.90
+  evidence_count:
+    per_item: 0.02
+    max: 0.12
+  regulated_category: 0.08
+  landing_page_mismatch: 0.08
+  privacy_tracking: 0.10
+  brand_safety: 0.05
+regulated_industries:
+  - health
+  - wellness
+  - finance
+```
+
+Library callers can pass either `scoring_config_path="scoring.yml"` or a parsed
+`scoring_config` mapping to `adlint.engine.analyze`.
 
 ## API
 
@@ -194,6 +244,7 @@ Bundled policies live in `adlint/policies/`:
 
 - `ftc_health_claims.yml`
 - `platform_google_ads.yml`
+- `platform_meta_ads.yml`
 - `platform_tiktok_ads.yml`
 - `platform_linkedin_ads.yml`
 - `privacy_hipaa_marketing.yml`
@@ -232,9 +283,10 @@ Run the seed evals:
 make eval
 ```
 
-The seed dataset has 50 examples across health, wellness, finance, SaaS,
-creator disclosure, privacy, landing-page mismatch, and brand-safety cases. It
-is a development sanity check, not a production benchmark.
+The seed dataset has 54 examples across health, wellness, finance, SaaS,
+creator disclosure, privacy, landing-page mismatch, brand-safety, and Meta
+platform-policy cases. It is a development sanity check, not a production
+benchmark.
 
 Run the larger deterministic benchmark:
 
@@ -251,6 +303,19 @@ make policy-coverage-validate
 
 The matrix is a coverage inventory for policy ids across seed, benchmark, and
 real-case datasets. It is not a quality or reliability metric.
+
+Run the deterministic rewrite-quality rubric separately from decision
+accuracy:
+
+```bash
+make rewrite-quality
+```
+
+The rewrite eval uses `evals/datasets/rewrite_quality_v1.jsonl` annotations
+for clarity, risk reduction, policy fit, and intent preservation. It reports a
+`rewrite_quality` section and marks `decision_accuracy` as not measured.
+Deterministic rewrites remain the baseline before any model-generated rewrites
+are introduced.
 
 Run the public-source real-case diagnostics:
 
@@ -288,7 +353,8 @@ make real-world-blind-model-quality
 balanced across 30 approved, 30 needs-review, and 30 high-risk expected
 decisions. It is marked as a rule-tuning holdout and should be used to measure
 generalization before changing deterministic rules. The CI gate uses a 0.90
-decision-accuracy threshold against the current 0.933 rule-only baseline.
+decision-accuracy threshold against the current 0.967 post-triage rule-only
+baseline.
 
 Before opening eval/reliability PRs, run:
 
@@ -309,6 +375,30 @@ Raw submissions are not persisted by default. To opt into JSONL logging, set:
   "log_path": "logs/adlint-runs.jsonl"
 }
 ```
+
+SQLite metadata storage is separate and opt-in:
+
+```json
+{
+  "storage_enabled": true,
+  "storage_path": "logs/adlint-metadata.sqlite3"
+}
+```
+
+Inspect or initialize the schema:
+
+```bash
+python -m adlint.storage schema
+python -m adlint.storage init logs/adlint-metadata.sqlite3
+```
+
+Privacy guarantee: SQLite stores scan metadata only: platform, country,
+industry, decision, risk score, review flag, policy IDs/categories/severity
+counts, enabled modules, model metadata, logging flag, and report paths. It
+does not store headline, body, CTA, landing-page URL, landing-page HTML,
+evidence text, or rewrite text. Rewrite eval storage uses separate eval tables
+and stores only row IDs, aggregate scores, per-dimension scores, pass flags,
+and failure-code labels, not dataset inputs or generated rewrites.
 
 ## Local model hook
 

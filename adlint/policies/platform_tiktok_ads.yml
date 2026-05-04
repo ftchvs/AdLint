@@ -41,6 +41,7 @@ policies:
     signals:
       - sponsored
       - affiliate
+      - brand-tagged
       - partner
       - paid partnership
       - promo code

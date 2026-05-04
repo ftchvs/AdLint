@@ -232,3 +232,48 @@ def test_health_breach_indicator_requires_app_device_or_consumer_health_context(
 
     assert "ftc_health_breach_notification_indicator" not in policy_ids(health_data_only)
     assert "ftc_health_breach_notification_indicator" in policy_ids(health_app)
+
+
+def test_projected_return_finance_copy_routes_to_google_financial_review() -> None:
+    result = analyze(
+        {
+            "platform": "google",
+            "industry": "finance",
+            "headline": "Projected return planning workbook",
+            "body": "Compare projected return scenarios for a new savings plan without committing today.",
+            "cta": "Open workbook",
+        }
+    )
+
+    assert result.decision == "needs_review"
+    assert "google_financial_claim_review" in policy_ids(result)
+
+
+def test_tiktok_brand_tagged_creator_copy_routes_to_disclosure_review() -> None:
+    result = analyze(
+        {
+            "platform": "tiktok",
+            "industry": "creator",
+            "headline": "Brand-tagged morning routine story",
+            "body": "A creator tags the brand while showing a morning routine and product setup.",
+            "cta": "Watch story",
+        }
+    )
+
+    assert result.decision == "needs_review"
+    assert "tiktok_disclosure_risk" in policy_ids(result)
+
+
+def test_faith_leader_event_context_routes_to_sensitive_social_issue_review() -> None:
+    result = analyze(
+        {
+            "platform": "google",
+            "industry": "general",
+            "headline": "Community event for faith leaders",
+            "body": "Promote a public community event for faith leaders and local organizers.",
+            "cta": "Register",
+        }
+    )
+
+    assert result.decision == "needs_review"
+    assert "brand_safety_sensitive_social_issue" in policy_ids(result)

@@ -29,7 +29,7 @@ deterministic policy engine remains the reproducible baseline.
 
 The evaluation uses three local JSONL datasets:
 
-- `evals/datasets/seed_ads.jsonl`: a 50-example smoke dataset.
+- `evals/datasets/seed_ads.jsonl`: a 54-example smoke dataset.
 - `evals/datasets/rule_benchmark_v1.jsonl`: a 200-example benchmark generated
   from the seed set plus policy-author authored synthetic variants.
 - `evals/datasets/real_cases_v1.jsonl`: a 75-example public-source diagnostic
@@ -127,11 +127,13 @@ A separate local smoke run should be used before interpreting model quality. It
 requires the configured Ollama model to return status `ok` on a small subset
 before teams spend time on the full 200-row model comparison.
 
-The latest smoke run reached status `ok` for all three model-required rows.
-Hybrid decision accuracy stayed at 1.000 on the subset, while model-only
-decision accuracy was 0.667. This supports the current architecture: use the
+The latest default smoke run reached status `ok` for all three model-required
+rows. Hybrid decision accuracy stayed at 1.000 on the subset, while model-only
+decision accuracy was 0.333. This supports the current architecture: use the
 model as extra review signal, not as a replacement for deterministic policy
-checks.
+checks. A capped-generation smoke with `ADLINT_OLLAMA_NUM_PREDICT=128` was
+faster but produced `invalid_response` for all three model-required rows, so it
+is not a recommended default.
 
 The current adjudicated real-case diagnostic run scored 75 public-source,
 paraphrased cases balanced across 25 approved, 25 needs-review, and 25
