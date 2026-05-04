@@ -2,8 +2,9 @@ PYTHON ?= python3
 VENV := .venv
 BIN := $(VENV)/bin
 STAMP := $(VENV)/.installed
+MODEL_EVAL_FLAGS ?= --ollama-model gpt-oss-safeguard:20b
 
-.PHONY: api dev scan eval benchmark benchmark-data policy-coverage policy-coverage-validate model-benchmark model-smoke real-cases real-cases-hybrid real-cases-validate test install
+.PHONY: api dev scan eval benchmark benchmark-data policy-coverage policy-coverage-validate model-benchmark model-smoke pr-preflight real-cases real-cases-ci real-cases-hybrid real-cases-model-quality real-cases-validate real-world-blind-candidates real-world-blind-ci real-world-blind-validate real-world-blind real-world-blind-model-quality test install
 
 install: $(STAMP)
 
@@ -42,16 +43,45 @@ model-benchmark: $(STAMP)
 model-smoke: $(STAMP)
 	$(BIN)/python evals/run_eval.py evals/datasets/seed_ads.jsonl --mode all --limit 3 --require-model --min-decision-accuracy 0 --output evals/results/model_smoke.json --markdown-output evals/results/model_smoke.md
 
+pr-preflight: $(STAMP)
+	$(BIN)/python evals/preflight_eval_assets.py
+
 real-cases-validate: $(STAMP)
-	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_cases_v1.jsonl
+	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_cases_v1.jsonl --min-rows 75 --require-decision-count approved=25 --require-decision-count needs_review=25 --require-decision-count high_risk=25
 
 real-cases: $(STAMP)
-	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_cases_v1.jsonl
+	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_cases_v1.jsonl --min-rows 75 --require-decision-count approved=25 --require-decision-count needs_review=25 --require-decision-count high_risk=25
 	$(BIN)/python evals/run_eval.py evals/datasets/real_cases_v1.jsonl --min-decision-accuracy 0 --output evals/results/real_cases_v1.json --markdown-output evals/results/real_cases_v1.md
 
+real-cases-ci: $(STAMP)
+	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_cases_v1.jsonl --min-rows 75 --require-decision-count approved=25 --require-decision-count needs_review=25 --require-decision-count high_risk=25
+	$(BIN)/python evals/run_eval.py evals/datasets/real_cases_v1.jsonl --min-decision-accuracy 1.0 --summary-only --output evals/results/real_cases_v1.json --markdown-output evals/results/real_cases_v1.md
+
 real-cases-hybrid: $(STAMP)
-	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_cases_v1.jsonl
+	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_cases_v1.jsonl --min-rows 75 --require-decision-count approved=25 --require-decision-count needs_review=25 --require-decision-count high_risk=25
 	$(BIN)/python evals/run_eval.py evals/datasets/real_cases_v1.jsonl --mode all --min-decision-accuracy 0 --output evals/results/real_cases_hybrid.json --markdown-output evals/results/real_cases_hybrid.md
+
+real-cases-model-quality: $(STAMP)
+	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_cases_v1.jsonl --min-rows 75 --require-decision-count approved=25 --require-decision-count needs_review=25 --require-decision-count high_risk=25
+	ADLINT_OLLAMA_TIMEOUT=300 $(BIN)/python evals/run_eval.py evals/datasets/real_cases_v1.jsonl --mode all --require-model --min-decision-accuracy 0 $(MODEL_EVAL_FLAGS) --output evals/results/real_cases_model_quality.json --markdown-output evals/results/real_cases_model_quality.md
+
+real-world-blind-candidates: $(STAMP)
+	$(BIN)/python evals/collect_real_world_candidates.py --format summary
+
+real-world-blind-validate: $(STAMP)
+	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_world_blind_v1.jsonl --blind --min-rows 90 --require-decision-count approved=30 --require-decision-count needs_review=30 --require-decision-count high_risk=30
+
+real-world-blind: $(STAMP)
+	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_world_blind_v1.jsonl --blind --min-rows 90 --require-decision-count approved=30 --require-decision-count needs_review=30 --require-decision-count high_risk=30
+	$(BIN)/python evals/run_eval.py evals/datasets/real_world_blind_v1.jsonl --min-decision-accuracy 0 --output evals/results/real_world_blind_v1.json --markdown-output evals/results/real_world_blind_v1.md
+
+real-world-blind-ci: $(STAMP)
+	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_world_blind_v1.jsonl --blind --min-rows 90 --require-decision-count approved=30 --require-decision-count needs_review=30 --require-decision-count high_risk=30
+	$(BIN)/python evals/run_eval.py evals/datasets/real_world_blind_v1.jsonl --min-decision-accuracy 0.90 --summary-only --output evals/results/real_world_blind_v1.json --markdown-output evals/results/real_world_blind_v1.md
+
+real-world-blind-model-quality: $(STAMP)
+	$(BIN)/python evals/validate_real_cases.py evals/datasets/real_world_blind_v1.jsonl --blind --min-rows 90 --require-decision-count approved=30 --require-decision-count needs_review=30 --require-decision-count high_risk=30
+	ADLINT_OLLAMA_TIMEOUT=300 $(BIN)/python evals/run_eval.py evals/datasets/real_world_blind_v1.jsonl --mode all --require-model --min-decision-accuracy 0 $(MODEL_EVAL_FLAGS) --output evals/results/real_world_blind_model_quality.json --markdown-output evals/results/real_world_blind_model_quality.md
 
 test: $(STAMP)
 	$(BIN)/python -m pytest

@@ -102,6 +102,44 @@ def test_classify_with_ollama_sends_deterministic_chat_payload(monkeypatch) -> N
     assert seen["payload"]["messages"][0]["role"] == "user"
 
 
+def test_classify_with_ollama_accepts_generation_timeout_override(monkeypatch) -> None:
+    seen: dict[str, Any] = {}
+
+    def fake_urlopen(request, timeout):
+        seen["timeout"] = timeout
+        return FakeResponse({"message": {"content": '{"decision": "approved"}'}})
+
+    monkeypatch.setenv("ADLINT_OLLAMA_TIMEOUT", "120")
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    classify_with_ollama(
+        Submission(platform="google", country="US", industry="general", headline="Hello"),
+        model="llama3.2:latest",
+        endpoint="http://127.0.0.1:11434/api/chat",
+    )
+
+    assert seen["timeout"] == 120
+
+
+def test_classify_with_ollama_accepts_num_predict_override(monkeypatch) -> None:
+    seen: dict[str, Any] = {}
+
+    def fake_urlopen(request, timeout):
+        seen["payload"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse({"message": {"content": '{"decision": "approved"}'}})
+
+    monkeypatch.setenv("ADLINT_OLLAMA_NUM_PREDICT", "256")
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    classify_with_ollama(
+        Submission(platform="google", country="US", industry="general", headline="Hello"),
+        model="llama3.2:latest",
+        endpoint="http://127.0.0.1:11434/api/chat",
+    )
+
+    assert seen["payload"]["options"] == {"temperature": 0, "num_predict": 256}
+
+
 def test_classify_with_ollama_prompt_includes_bounded_landing_page_context(monkeypatch) -> None:
     seen: dict[str, Any] = {}
 

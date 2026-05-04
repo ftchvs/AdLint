@@ -22,6 +22,11 @@ Environment variables:
   `gpt-oss-safeguard:20b`.
 - `ADLINT_OLLAMA_URL`: Ollama-compatible chat endpoint. Defaults to
   `http://localhost:11434/api/chat`.
+- `ADLINT_OLLAMA_TIMEOUT`: generation timeout in seconds for model calls.
+  The default is 45 seconds; eval targets use 300 seconds for slow local rows.
+- `ADLINT_OLLAMA_NUM_PREDICT`: optional positive token cap for local model
+  generation. Leave unset for Ollama defaults; set it for evals when a model
+  times out while producing verbose JSON.
 
 API fields:
 
@@ -36,3 +41,22 @@ API fields:
 If the model endpoint is unavailable, AdLint still returns rule-based findings
 and marks the model status as `unavailable` in the JSON output. The rule-based
 decision, risk score, policy hits, and rewrites are still returned.
+
+For production-reliability diagnostics, run the balanced 75-row public-source
+real-case comparison:
+
+```bash
+make real-cases-model-quality
+```
+
+For the harder blind holdout, run:
+
+```bash
+make real-world-blind-model-quality
+```
+
+The target requires model availability and writes ignored JSON/Markdown
+artifacts under `evals/results/`. It sets `ADLINT_OLLAMA_TIMEOUT=300` for the
+eval process because local inference can be slow on sensitive-context rows.
+Treat model-only and hybrid metrics as measured local-model quality for that
+run, not as legal-compliance or platform approval evidence.

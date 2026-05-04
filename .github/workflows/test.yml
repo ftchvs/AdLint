@@ -33,3 +33,22 @@ jobs:
 
       - name: Run tests
         run: python -m pytest
+
+      - name: Run eval PR preflight
+        run: make pr-preflight
+
+      - name: Run real-case CI gate
+        run: make real-cases-ci
+
+      - name: Run blind holdout CI gate
+        run: make real-world-blind-ci
+
+      - name: Upload eval reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-reports-py${{ matrix.python-version }}
+          path: |
+            evals/results/*.json
+            evals/results/*.md
+          if-no-files-found: ignore

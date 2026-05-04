@@ -63,7 +63,7 @@ def classify_with_ollama(
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=45) as response:
+        with urllib.request.urlopen(request, timeout=_generation_timeout()) as response:
             _raise_for_status(response)
             raw = json.loads(response.read().decode("utf-8"))
     except Exception as exc:  # pragma: no cover - local runtime dependent
@@ -97,6 +97,17 @@ def _selected_endpoint(endpoint: str | None) -> str:
     return endpoint or os.getenv("ADLINT_OLLAMA_URL") or DEFAULT_OLLAMA_URL
 
 
+def _generation_timeout() -> float:
+    raw_timeout = os.getenv("ADLINT_OLLAMA_TIMEOUT")
+    if raw_timeout is None:
+        return 45
+    try:
+        timeout = float(raw_timeout)
+    except ValueError:
+        return 45
+    return timeout if timeout > 0 else 45
+
+
 def _validate_loopback_endpoint(endpoint: str) -> None:
     parsed = urllib.parse.urlparse(endpoint)
     if parsed.scheme not in {"http", "https"}:
@@ -126,15 +137,30 @@ def _raise_for_status(response: Any) -> None:
 
 
 def _generation_payload(endpoint: str, model: str, prompt: str) -> dict[str, Any]:
+    options = _generation_options()
     common: dict[str, Any] = {
         "model": model,
         "stream": False,
         "format": "json",
-        "options": {"temperature": 0},
+        "options": options,
     }
     if urllib.parse.urlparse(endpoint).path.endswith("/api/generate"):
         return {**common, "prompt": prompt}
     return {**common, "messages": [{"role": "user", "content": prompt}]}
+
+
+def _generation_options() -> dict[str, Any]:
+    options: dict[str, Any] = {"temperature": 0}
+    raw_num_predict = os.getenv("ADLINT_OLLAMA_NUM_PREDICT")
+    if raw_num_predict is None:
+        return options
+    try:
+        num_predict = int(raw_num_predict)
+    except ValueError:
+        return options
+    if num_predict > 0:
+        options["num_predict"] = num_predict
+    return options
 
 
 def _response_text(raw: dict[str, Any]) -> str:

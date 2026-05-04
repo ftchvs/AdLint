@@ -24,23 +24,26 @@ platform approval or make definitive statutory violation determinations.
 - JSON stdout, Markdown stdout, and paired JSON/Markdown report files.
 - Safer rewrite suggestions for high-risk and review-required findings.
 - Opt-in JSONL run logging for local evaluation workflows.
-- Seed, benchmark, and public-source real-case eval runners.
+- Seed, benchmark, public-source real-case, and blind web-sourced eval runners.
 - Tests covering the CLI, API, policy loading, reports, documented examples,
   eval runner, and opt-in logging behavior.
 - Makefile and Docker Compose paths for local development.
 
 ## Not in this MVP yet
 
-- A statistically reliable real-case benchmark; the current public-source set
-  is diagnostic and intentionally small.
+- A statistically representative production benchmark; the current 75-row
+  public-source set and 90-row blind holdout are balanced and useful for
+  diagnostics, but still curated rather than randomly sampled production
+  traffic.
 - `scoring.yml` configurability; scoring weights currently live in Python.
 - SQLite or other durable storage; raw submissions are not persisted by
   default.
 - Playwright or trafilatura extraction. The current landing-page extractor is
   a small stdlib HTML parser that can read inline HTML, local files, or
   fetchable HTML URLs.
-- Verified live Ollama model quality or fine-tuning. Local model support is
-  available for decision support, but deterministic rules are the baseline.
+- Fine-tuning. Local model support is available for decision support, but
+  deterministic rules are the production baseline until live evals prove
+  incremental value.
 
 ## Quick start
 
@@ -70,7 +73,13 @@ make eval  # run the seed evals and write evals/results/latest.json
 make benchmark    # run the 200-row synthetic policy regression benchmark
 make policy-coverage           # refresh docs/policy_coverage_matrix.md
 make policy-coverage-validate  # check the committed coverage matrix
-make real-cases   # run sourced public-case diagnostics
+make pr-preflight # verify generated eval assets before opening an eval PR
+make real-cases   # run balanced public-source real-case diagnostics
+make real-cases-ci # run the strict real-case CI gate
+make real-cases-model-quality  # run the live local-model quality comparison
+make real-world-blind           # run blind web-sourced holdout diagnostics
+make real-world-blind-ci        # run the conservative blind holdout CI gate
+make real-world-blind-model-quality  # run live model quality on the blind holdout
 make test  # run pytest
 ```
 
@@ -247,13 +256,50 @@ Run the public-source real-case diagnostics:
 
 ```bash
 make real-cases
+make real-cases-ci
 ```
 
-`real_cases_v1` contains 13 paraphrased, source-backed rows from public FTC,
-ASA/CAP, and DOJ/HUD-style cases. It is intentionally diagnostic: all current
-rows are high-risk, so decision accuracy is not a reliability estimate. Use the
-policy false-positive and false-negative notes to decide what rules, labels, or
-model-rescue behavior to improve next.
+`real_cases_v1` contains 75 paraphrased, source-backed rows balanced across 25
+approved, 25 needs-review, and 25 high-risk expected decisions. It is useful
+production-reliability diagnostic coverage, but it is still curated and does
+not prove legal compliance or platform approval. The CI target requires 1.000
+rule-only decision accuracy to catch deterministic regressions.
+
+Run the full live local-model comparison against those same rows:
+
+```bash
+make real-cases-model-quality
+```
+
+This target requires the configured local Ollama-compatible model to be
+available. By default it uses `gpt-oss-safeguard:20b`; override
+`MODEL_EVAL_FLAGS` to test another installed model.
+
+Run the blind web-sourced holdout:
+
+```bash
+make real-world-blind-candidates
+make real-world-blind
+make real-world-blind-ci
+make real-world-blind-model-quality
+```
+
+`real_world_blind_v1` contains 90 accepted paraphrased public-source rows
+balanced across 30 approved, 30 needs-review, and 30 high-risk expected
+decisions. It is marked as a rule-tuning holdout and should be used to measure
+generalization before changing deterministic rules. The CI gate uses a 0.90
+decision-accuracy threshold against the current 0.933 rule-only baseline.
+
+Before opening eval/reliability PRs, run:
+
+```bash
+make pr-preflight
+```
+
+This confirms generated eval scripts and datasets are tracked and that the
+committed real-case and blind holdout datasets match their generators. Live
+local-model quality runs remain manual or scheduled diagnostics; deterministic
+rules remain the production baseline.
 
 Raw submissions are not persisted by default. To opt into JSONL logging, set:
 

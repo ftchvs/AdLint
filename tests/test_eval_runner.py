@@ -25,6 +25,26 @@ assert GENERATE_BENCHMARK_SPEC.loader is not None
 generate_benchmark_dataset = importlib.util.module_from_spec(GENERATE_BENCHMARK_SPEC)
 GENERATE_BENCHMARK_SPEC.loader.exec_module(generate_benchmark_dataset)
 
+GENERATE_REAL_CASES_PATH = ROOT / "evals" / "generate_real_cases_dataset.py"
+GENERATE_REAL_CASES_SPEC = importlib.util.spec_from_file_location(
+    "generate_real_cases_dataset",
+    GENERATE_REAL_CASES_PATH,
+)
+assert GENERATE_REAL_CASES_SPEC is not None
+assert GENERATE_REAL_CASES_SPEC.loader is not None
+generate_real_cases_dataset = importlib.util.module_from_spec(GENERATE_REAL_CASES_SPEC)
+GENERATE_REAL_CASES_SPEC.loader.exec_module(generate_real_cases_dataset)
+
+GENERATE_REAL_WORLD_BLIND_PATH = ROOT / "evals" / "generate_real_world_blind_dataset.py"
+GENERATE_REAL_WORLD_BLIND_SPEC = importlib.util.spec_from_file_location(
+    "generate_real_world_blind_dataset",
+    GENERATE_REAL_WORLD_BLIND_PATH,
+)
+assert GENERATE_REAL_WORLD_BLIND_SPEC is not None
+assert GENERATE_REAL_WORLD_BLIND_SPEC.loader is not None
+generate_real_world_blind_dataset = importlib.util.module_from_spec(GENERATE_REAL_WORLD_BLIND_SPEC)
+GENERATE_REAL_WORLD_BLIND_SPEC.loader.exec_module(generate_real_world_blind_dataset)
+
 
 def test_eval_runner_skips_blank_lines_and_preserves_row_ids(tmp_path) -> None:
     dataset = tmp_path / "dataset.jsonl"
@@ -115,7 +135,81 @@ def test_eval_runner_writes_metrics_output_and_returns_success(tmp_path, monkeyp
     assert stdout_metrics == file_metrics
     assert "## Confusion Matrix" in markdown_path.read_text(encoding="utf-8")
     assert stdout_metrics["decision_accuracy"] == 1.0
+    assert stdout_metrics["elapsed_seconds"] >= 0
     assert stdout_metrics["policy_metrics"]["brand_safety_politics"]["recall"] == 1.0
+
+
+def test_eval_runner_summary_only_preserves_full_output_file(tmp_path, monkeypatch, capsys) -> None:
+    dataset = tmp_path / "dataset.jsonl"
+    output_path = tmp_path / "metrics" / "eval.json"
+    markdown_path = tmp_path / "metrics" / "eval.md"
+    dataset.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "id": "decision-miss",
+                        "input": {
+                            "platform": "linkedin",
+                            "industry": "saas",
+                            "headline": "Plan campaign launches",
+                            "body": "Coordinate launch notes.",
+                            "cta": "Learn more",
+                        },
+                        "expected_decision": "high_risk",
+                        "expected_policy_ids": ["unsupported_health_claim"],
+                    }
+                ),
+                json.dumps(
+                    {
+                        "id": "policy-fp",
+                        "input": {
+                            "platform": "google",
+                            "industry": "general",
+                            "headline": "Advertise near election analysis",
+                            "body": "Sponsor political coverage during ballot season.",
+                            "cta": "Request inventory",
+                        },
+                        "expected_decision": "needs_review",
+                        "expected_policy_ids": [],
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_eval.py",
+            str(dataset),
+            "--summary-only",
+            "--min-decision-accuracy",
+            "0",
+            "--output",
+            str(output_path),
+            "--markdown-output",
+            str(markdown_path),
+        ],
+    )
+
+    assert run_eval.main() == 0
+
+    stdout = capsys.readouterr().out
+    file_metrics = json.loads(output_path.read_text(encoding="utf-8"))
+    assert "AdLint eval summary" in stdout
+    assert "mode: rule-only" in stdout
+    assert "total_rows: 2" in stdout
+    assert "decision_mismatches: 1" in stdout
+    assert "policy_false_negatives: 1" in stdout
+    assert "policy_false_positives: 1" in stdout
+    assert f"json_output: {output_path}" in stdout
+    assert f"markdown_output: {markdown_path}" in stdout
+    assert '"results"' not in stdout
+    assert file_metrics["results"][0]["id"] == "decision-miss"
+    assert "## Review Notes" in markdown_path.read_text(encoding="utf-8")
 
 
 def test_eval_runner_limit_scores_only_first_rows(tmp_path, monkeypatch, capsys) -> None:
@@ -457,6 +551,12 @@ def test_hybrid_value_metrics_quantify_model_adds_and_harm() -> None:
     assert value["model_added_policy_hit_count"] == 2
     assert value["model_added_expected_policy_hit_count"] == 1
     assert value["model_added_false_positive_policy_hit_count"] == 1
+    assert value["model_added_generic_policy_review_count"] == 2
+    assert value["model_added_detailed_policy_hit_count"] == 0
+    assert value["model_added_detailed_expected_policy_hit_count"] == 0
+    assert value["model_added_detailed_false_positive_policy_hit_count"] == 0
+    assert value["rows_with_model_added_generic_review"] == 2
+    assert value["rows_with_model_added_detailed_findings"] == 0
     assert value["model_rescued_policy_false_negative_count"] == 1
     assert value["model_only_overcall_count"] == 1
     extra_review_note = next(
@@ -465,6 +565,8 @@ def test_hybrid_value_metrics_quantify_model_adds_and_harm() -> None:
     assert extra_review_note["added_false_positive_policy_ids"] == [
         "model_policy_review"
     ]
+    assert extra_review_note["added_generic_policy_ids"] == ["model_policy_review"]
+    assert extra_review_note["added_detailed_policy_ids"] == []
 
 
 def test_benchmark_dataset_is_reproducible_labeled_and_large_enough() -> None:
@@ -506,11 +608,36 @@ def test_real_case_dataset_has_adjudicated_policy_labels() -> None:
         max_review_notes=100,
     )
 
-    assert metrics["total_examples"] == 13
-    assert metrics["decision_accuracy"] == 1.0
+    assert metrics["total_examples"] == 75
+    assert metrics["confusion_matrix"]["approved"]["approved"] == 25
+    assert metrics["confusion_matrix"]["needs_review"]["needs_review"] == 25
+    assert metrics["confusion_matrix"]["high_risk"]["high_risk"] == 25
     assert metrics["review_notes"]["decision_mismatches"] == []
     assert metrics["review_notes"]["false_positives"] == []
     assert metrics["review_notes"]["false_negatives"] == []
+
+
+def test_real_case_dataset_matches_generator() -> None:
+    dataset_path = ROOT / "evals" / "datasets" / "real_cases_v1.jsonl"
+    dataset_rows = run_eval._load_rows(dataset_path)
+
+    assert dataset_rows == generate_real_cases_dataset.build_rows()
+
+
+def test_real_world_blind_dataset_is_separate_balanced_and_reproducible() -> None:
+    blind_path = ROOT / "evals" / "datasets" / "real_world_blind_v1.jsonl"
+    real_cases_path = ROOT / "evals" / "datasets" / "real_cases_v1.jsonl"
+    blind_rows = run_eval._load_rows(blind_path)
+    real_case_rows = run_eval._load_rows(real_cases_path)
+
+    assert blind_rows == generate_real_world_blind_dataset.build_rows()
+    assert len(blind_rows) == 90
+    assert {row["id"] for row in blind_rows}.isdisjoint({row["id"] for row in real_case_rows})
+    assert {row["expected_decision"] for row in blind_rows} == {"approved", "needs_review", "high_risk"}
+    assert sum(row["expected_decision"] == "approved" for row in blind_rows) == 30
+    assert sum(row["expected_decision"] == "needs_review" for row in blind_rows) == 30
+    assert sum(row["expected_decision"] == "high_risk" for row in blind_rows) == 30
+    assert all(row["adjudication_status"] == "accepted" for row in blind_rows)
 
 
 def test_eval_docs_reference_current_reproducible_commands_and_dataset() -> None:
@@ -521,7 +648,11 @@ def test_eval_docs_reference_current_reproducible_commands_and_dataset() -> None
     assert "make benchmark" in eval_report
     assert "make model-benchmark" in eval_report
     assert "make model-smoke" in eval_report
+    assert "make real-cases-model-quality" in eval_report
+    assert "make real-world-blind-model-quality" in eval_report
     assert "make model-smoke" in eval_readme
+    assert "make real-cases-model-quality" in eval_readme
+    assert "make real-world-blind-model-quality" in eval_readme
     assert "make eval" in eval_report
     assert "evals/datasets/rule_benchmark_v1.jsonl" in eval_report
     assert "not evidence of legal compliance" in eval_report

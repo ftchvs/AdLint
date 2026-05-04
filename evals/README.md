@@ -8,10 +8,15 @@ platform approval.
 
 - `datasets/seed_ads.jsonl`: 50-example smoke set.
 - `datasets/rule_benchmark_v1.jsonl`: 200-example deterministic benchmark.
-- `datasets/real_cases_v1.jsonl`: 13 public-source, paraphrased real-case
-  diagnostics. These rows are source-backed examples from FTC, ASA/CAP, and
-  DOJ/HUD-style public actions or rulings, rewritten as deterministic local
-  inputs. They are not a statistically reliable benchmark.
+- `datasets/real_cases_v1.jsonl`: 75 public-source, paraphrased real-case
+  diagnostics balanced across 25 `approved`, 25 `needs_review`, and 25
+  `high_risk` expected decisions. These rows come from public marketing pages,
+  public policy examples, FTC/ASA/CAP/HHS/DOJ-style sources, and platform or
+  taxonomy guidance rewritten as deterministic local inputs.
+- `datasets/real_world_blind_v1.jsonl`: 90 accepted public web-source blind
+  holdout rows balanced across 30 `approved`, 30 `needs_review`, and 30
+  `high_risk` expected decisions. These rows remain separate from rule tuning
+  until after baseline reporting.
 
 Regenerate `rule_benchmark_v1.jsonl`:
 
@@ -35,6 +40,18 @@ make policy-coverage
 The seed and benchmark datasets are complete-coverage gates for current
 policy ids. `real_cases_v1` is included in the inventory, but it remains
 diagnostic-only and should not block coverage completeness by itself.
+
+Before packaging an eval PR, run the generated-asset preflight:
+
+```bash
+make pr-preflight
+```
+
+The preflight checks that the real-case generators, blind candidate helper,
+and committed datasets are tracked in Git. It also verifies that
+`real_cases_v1.jsonl` matches `generate_real_cases_dataset.build_rows()` and
+that `real_world_blind_v1.jsonl` matches
+`generate_real_world_blind_dataset.build_rows()`.
 
 Compare rule-only, model-only, and hybrid modes:
 
@@ -61,17 +78,68 @@ Validate and run the real-case diagnostic set:
 make real-cases
 ```
 
+Run the CI gate for the same rows:
+
+```bash
+make real-cases-ci
+```
+
+This gate requires 1.000 rule-only decision accuracy. The rows are curated and
+source-backed, so CI should catch any deterministic regression immediately.
+
+Validate only the 75-row balance and required source metadata:
+
+```bash
+make real-cases-validate
+```
+
 Compare rule-only, model-only, and hybrid behavior on the same real-case rows:
 
 ```bash
 make real-cases-hybrid
 ```
 
-`real-cases` and `real-cases-hybrid` intentionally use
-`--min-decision-accuracy 0` because this dataset is diagnostic. Its value is in
-the row-level false-positive and false-negative notes, not in a pass/fail gate.
-The initial set is also all high-risk by construction, so decision accuracy is
-not a reliability estimate.
+Run the required live local-model quality comparison against the balanced
+real-case set:
+
+```bash
+make real-cases-model-quality
+```
+
+`MODEL_EVAL_FLAGS` defaults to `--ollama-model gpt-oss-safeguard:20b` and can
+be overridden when testing another installed Ollama-compatible model.
+The target sets `ADLINT_OLLAMA_TIMEOUT=300` because local model inference can
+be slow on political or other sensitive-context rows.
+
+Inspect the 150-row public-source candidate pool and run the blind holdout:
+
+```bash
+make real-world-blind-candidates
+make real-world-blind-validate
+make real-world-blind
+make real-world-blind-model-quality
+```
+
+Run the CI gate for the blind holdout:
+
+```bash
+make real-world-blind-ci
+```
+
+This gate uses a conservative 0.90 rule-only decision-accuracy threshold. The
+current baseline is below perfect by design, so the holdout continues to expose
+generalization misses without forcing rule tuning directly against it.
+
+The blind model-quality target uses the same default
+`MODEL_EVAL_FLAGS=--ollama-model gpt-oss-safeguard:20b` and writes ignored
+JSON/Markdown artifacts under `evals/results/`.
+If a non-default local model times out while generating verbose JSON, rerun the
+direct `evals/run_eval.py` command with `ADLINT_OLLAMA_NUM_PREDICT=256` to cap
+the model response without changing the dataset or decision thresholds.
+
+Local model-quality targets intentionally remain manual/scheduled diagnostics.
+Deterministic rules stay the production baseline unless measured quality
+improves enough to change that contract.
 
 ## Row Schema
 
@@ -94,10 +162,18 @@ label metadata:
 
 - `source_type`, `source_org`, `source_url`, and `source_title`.
 - `label_basis` and `label_confidence`.
+- `source_tier`, `label_rationale`, `provenance`, `accessed_at`,
+  `policy_areas`, `copyright_status`, and `outcome_source`.
 - No live `landing_page_url` inside `input`; use deterministic
   `landing_page_html` or text fields instead.
 
 See `evals/real_cases.md` for the real-case collection protocol.
+
+Blind holdout rows add `source_platform`, `source_capture_type`,
+`ad_observed_status`, `adjudication_status`, `adjudicator_notes`, and
+`rule_tuning_holdout`. The validator also rejects duplicate source URLs,
+duplicate normalized headlines, live landing-page URLs, long raw copied ad
+excerpts, screenshots, account ids, and targeting details.
 
 ## Labeling Rules
 
@@ -110,3 +186,5 @@ See `evals/real_cases.md` for the real-case collection protocol.
   that needs human review.
 - Do not claim model quality from rule-only benchmark results.
 - Keep synthetic regression benchmarks separate from real-case diagnostics.
+- Keep `real_world_blind_v1` separate from rule tuning until the first
+  rule-only and live-model baselines are recorded.
