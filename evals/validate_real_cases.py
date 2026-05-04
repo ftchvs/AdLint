@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import argparse
 import sys
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -137,6 +138,89 @@ def validate_dataset(
     return row_count
 
 
+def validate_candidate_pool(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    seen_ids: set[str] = set()
+    seen_source_urls: set[str] = set()
+    accepted_source_urls: set[str] = set()
+    accepted_normalized_headlines: set[str] = set()
+    status_counts: Counter[str] = Counter()
+    accepted_decision_counts: Counter[str] = Counter()
+    distributions: dict[str, dict[str, Counter[str]]] = {
+        "accepted": {"source_platform": Counter(), "source_capture_type": Counter()},
+        "rejected": {"source_platform": Counter(), "source_capture_type": Counter()},
+    }
+    dataset_path = Path("<real-world-blind-candidate-pool>")
+
+    for index, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            _fail(dataset_path, index, "row must be a JSON object")
+
+        _validate_row(
+            row,
+            dataset_path=dataset_path,
+            line_number=index,
+            seen_ids=seen_ids,
+            blind=False,
+        )
+        _validate_blind_common_metadata(row, dataset_path=dataset_path, line_number=index)
+
+        status = str(row["adjudication_status"])
+        status_counts[status] += 1
+        if row["source_url"] in seen_source_urls:
+            _fail(dataset_path, index, f"duplicate source_url: {row['source_url']}")
+        seen_source_urls.add(row["source_url"])
+
+        if status == "accepted":
+            _validate_accepted_candidate_row(
+                row,
+                dataset_path=dataset_path,
+                line_number=index,
+                seen_source_urls=accepted_source_urls,
+                seen_normalized_headlines=accepted_normalized_headlines,
+            )
+            accepted_decision_counts[str(row["expected_decision"])] += 1
+        elif status == "rejected":
+            if not isinstance(row["rule_tuning_holdout"], bool):
+                _fail(dataset_path, index, "rejected blind rows must set rule_tuning_holdout to a boolean")
+        else:
+            _fail(dataset_path, index, "candidate pool rows must be accepted or rejected")
+
+        if status in distributions:
+            distributions[status]["source_platform"][str(row["source_platform"])] += 1
+            distributions[status]["source_capture_type"][str(row["source_capture_type"])] += 1
+
+    if len(rows) != 150:
+        raise ValidationError(f"{dataset_path}: expected 150 candidate rows, found {len(rows)}")
+    if status_counts.get("accepted", 0) != 90:
+        raise ValidationError(
+            f"{dataset_path}: expected 90 accepted candidate rows, found {status_counts.get('accepted', 0)}"
+        )
+    if status_counts.get("rejected", 0) != 60:
+        raise ValidationError(
+            f"{dataset_path}: expected 60 rejected candidate rows, found {status_counts.get('rejected', 0)}"
+        )
+
+    for decision in EXPECTED_DECISIONS:
+        actual_count = accepted_decision_counts.get(decision, 0)
+        if actual_count != 30:
+            raise ValidationError(
+                f"{dataset_path}: expected 30 accepted {decision} rows, found {actual_count}"
+            )
+
+    return {
+        "total_rows": len(rows),
+        "status_counts": _sorted_counter(status_counts),
+        "accepted_decision_counts": _sorted_counter(accepted_decision_counts),
+        "distributions": {
+            status: {
+                field_name: _sorted_counter(counter)
+                for field_name, counter in fields.items()
+            }
+            for status, fields in distributions.items()
+        },
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate AdLint real-case eval metadata.")
     parser.add_argument("dataset", nargs="?", default=str(DEFAULT_DATASET_PATH), help="real-case JSONL dataset")
@@ -241,18 +325,7 @@ def _validate_blind_row(
     seen_source_urls: set[str],
     seen_normalized_headlines: set[str],
 ) -> None:
-    missing = sorted(BLIND_REQUIRED_FIELDS - row.keys())
-    if missing:
-        _fail(dataset_path, line_number, f"missing blind field(s): {', '.join(missing)}")
-
-    if row["source_platform"] not in BLIND_SOURCE_PLATFORMS:
-        _fail(dataset_path, line_number, "source_platform must be a known blind source platform")
-    if row["source_capture_type"] not in BLIND_SOURCE_CAPTURE_TYPES:
-        _fail(dataset_path, line_number, "source_capture_type must be a known blind capture type")
-    if row["ad_observed_status"] not in BLIND_AD_OBSERVED_STATUSES:
-        _fail(dataset_path, line_number, "ad_observed_status must be one of: active, inactive, archived, unknown")
-    if row["adjudication_status"] not in BLIND_ADJUDICATION_STATUSES:
-        _fail(dataset_path, line_number, "adjudication_status must be one of: candidate, accepted, rejected")
+    _validate_blind_common_metadata(row, dataset_path=dataset_path, line_number=line_number)
 
     if row["source_url"] in seen_source_urls:
         _fail(dataset_path, line_number, f"duplicate source_url: {row['source_url']}")
@@ -269,8 +342,36 @@ def _validate_blind_row(
     if row["adjudication_status"] == "accepted":
         if row["rule_tuning_holdout"] is not True:
             _fail(dataset_path, line_number, "accepted blind rows must set rule_tuning_holdout to true")
-        if not _non_empty_text(row["adjudicator_notes"]):
+
+
+def _validate_blind_common_metadata(
+    row: dict[str, Any],
+    *,
+    dataset_path: Path,
+    line_number: int,
+) -> None:
+    missing = sorted(BLIND_REQUIRED_FIELDS - row.keys())
+    if missing:
+        _fail(dataset_path, line_number, f"missing blind field(s): {', '.join(missing)}")
+
+    if row["source_platform"] not in BLIND_SOURCE_PLATFORMS:
+        _fail(dataset_path, line_number, "source_platform must be a known blind source platform")
+    if row["source_capture_type"] not in BLIND_SOURCE_CAPTURE_TYPES:
+        _fail(dataset_path, line_number, "source_capture_type must be a known blind capture type")
+    if row["ad_observed_status"] not in BLIND_AD_OBSERVED_STATUSES:
+        _fail(dataset_path, line_number, "ad_observed_status must be one of: active, inactive, archived, unknown")
+    if row["adjudication_status"] not in BLIND_ADJUDICATION_STATUSES:
+        _fail(dataset_path, line_number, "adjudication_status must be one of: candidate, accepted, rejected")
+
+    headline = row["input"].get("headline")
+    normalized_headline = _normalize_for_duplicate_check(headline)
+    if not normalized_headline:
+        _fail(dataset_path, line_number, "blind input headline must be non-empty text")
+
+    if not _non_empty_text(row["adjudicator_notes"]):
+        if row["adjudication_status"] == "accepted":
             _fail(dataset_path, line_number, "accepted blind rows must include adjudicator_notes")
+        _fail(dataset_path, line_number, "blind rows must include adjudicator_notes")
 
     for field_name in RAW_EXCERPT_FIELDS:
         value = row.get(field_name)
@@ -284,6 +385,28 @@ def _validate_blind_row(
     for forbidden_field in ("raw_landing_page_html", "screenshot_url", "account_id", "targeting_details"):
         if forbidden_field in row:
             _fail(dataset_path, line_number, f"blind rows must not include {forbidden_field}")
+
+
+def _validate_accepted_candidate_row(
+    row: dict[str, Any],
+    *,
+    dataset_path: Path,
+    line_number: int,
+    seen_source_urls: set[str],
+    seen_normalized_headlines: set[str],
+) -> None:
+    if row["rule_tuning_holdout"] is not True:
+        _fail(dataset_path, line_number, "accepted blind rows must set rule_tuning_holdout to true")
+
+    if row["source_url"] in seen_source_urls:
+        _fail(dataset_path, line_number, f"duplicate accepted source_url: {row['source_url']}")
+    seen_source_urls.add(row["source_url"])
+
+    headline = row["input"].get("headline")
+    normalized_headline = _normalize_for_duplicate_check(headline)
+    if normalized_headline in seen_normalized_headlines:
+        _fail(dataset_path, line_number, f"duplicate accepted normalized headline: {headline}")
+    seen_normalized_headlines.add(normalized_headline)
 
 
 def _is_http_url(value: Any) -> bool:
@@ -339,6 +462,10 @@ def _parse_required_decision_counts(raw_values: list[str]) -> dict[str, int]:
             raise ValidationError(f"decision count for {label} must be non-negative")
         parsed[label] = count
     return parsed
+
+
+def _sorted_counter(counter: Counter[str]) -> dict[str, int]:
+    return {key: counter[key] for key in sorted(counter)}
 
 
 def _fail(dataset_path: Path, line_number: int, message: str) -> None:

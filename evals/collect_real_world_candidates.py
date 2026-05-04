@@ -5,6 +5,7 @@ import json
 from collections import Counter
 
 from generate_real_world_blind_dataset import build_candidate_pool
+from validate_real_cases import validate_candidate_pool
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -25,7 +26,13 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(row, sort_keys=True, separators=(",", ":")))
         return 0
 
-    print(f"candidates: {len(rows)}")
+    summary = validate_candidate_pool(rows)
+    status_counts = summary["status_counts"]
+    print(
+        "OK candidate pool validated: "
+        f"{summary['total_rows']} rows "
+        f"(accepted={status_counts['accepted']}, rejected={status_counts['rejected']})"
+    )
     for label, counts in (
         ("adjudication_status", Counter(row["adjudication_status"] for row in rows)),
         ("expected_decision", Counter(row["expected_decision"] for row in rows)),
@@ -34,6 +41,14 @@ def main(argv: list[str] | None = None) -> int:
         print(label)
         for key, count in sorted(counts.items()):
             print(f"  {key}: {count}")
+    print("accepted.expected_decision")
+    for key, count in summary["accepted_decision_counts"].items():
+        print(f"  {key}: {count}")
+    for status in ("accepted", "rejected"):
+        for field_name, counts in summary["distributions"][status].items():
+            print(f"{status}.{field_name}")
+            for key, count in counts.items():
+                print(f"  {key}: {count}")
     return 0
 
 

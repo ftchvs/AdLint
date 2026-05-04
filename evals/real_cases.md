@@ -109,6 +109,24 @@ Real-case rows must not include live `landing_page_url` fields. Use
 `landing_page_html` snippets or plain copy fields so the same row scores the
 same way offline.
 
+## Blind candidate-pool validation
+
+The blind candidate pool keeps both accepted and rejected rows so reviewers can
+audit how the 90-row holdout was selected from the 150-row public-source pool.
+Run:
+
+```bash
+make real-world-blind-candidates
+```
+
+The candidate check enforces 150 total rows, 90 accepted rows, 60 rejected
+rows, and a 30/30/30 accepted decision balance. Accepted rows keep strict id,
+source URL, and normalized-headline duplicate checks because they become the
+committed holdout. Rejected rows still need valid blind metadata and rejection
+notes, but they may share normalized headlines with accepted rows because the
+current rejected set intentionally includes clone rows used to document source
+family pruning and final label balancing.
+
 ## Copyright and provenance rules
 
 Keep real-case storage conservative:

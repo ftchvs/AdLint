@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 from pathlib import Path
 from collections import Counter
 
@@ -10,11 +11,30 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 VALIDATOR_PATH = ROOT / "evals" / "validate_real_cases.py"
+BLIND_GENERATOR_PATH = ROOT / "evals" / "generate_real_world_blind_dataset.py"
+COLLECT_CANDIDATES_PATH = ROOT / "evals" / "collect_real_world_candidates.py"
+sys.path.insert(0, str(ROOT / "evals"))
 VALIDATOR_SPEC = importlib.util.spec_from_file_location("validate_real_cases", VALIDATOR_PATH)
 assert VALIDATOR_SPEC is not None
 assert VALIDATOR_SPEC.loader is not None
 validate_real_cases = importlib.util.module_from_spec(VALIDATOR_SPEC)
 VALIDATOR_SPEC.loader.exec_module(validate_real_cases)
+
+BLIND_GENERATOR_SPEC = importlib.util.spec_from_file_location(
+    "generate_real_world_blind_dataset", BLIND_GENERATOR_PATH
+)
+assert BLIND_GENERATOR_SPEC is not None
+assert BLIND_GENERATOR_SPEC.loader is not None
+generate_real_world_blind_dataset = importlib.util.module_from_spec(BLIND_GENERATOR_SPEC)
+BLIND_GENERATOR_SPEC.loader.exec_module(generate_real_world_blind_dataset)
+
+COLLECT_CANDIDATES_SPEC = importlib.util.spec_from_file_location(
+    "collect_real_world_candidates", COLLECT_CANDIDATES_PATH
+)
+assert COLLECT_CANDIDATES_SPEC is not None
+assert COLLECT_CANDIDATES_SPEC.loader is not None
+collect_real_world_candidates = importlib.util.module_from_spec(COLLECT_CANDIDATES_SPEC)
+COLLECT_CANDIDATES_SPEC.loader.exec_module(collect_real_world_candidates)
 
 
 def _valid_row(**overrides):
@@ -320,3 +340,63 @@ def test_committed_real_world_blind_dataset_validates() -> None:
         "high_risk": 30,
     }
     assert all(row["rule_tuning_holdout"] is True for row in rows)
+
+
+def test_real_world_blind_candidate_pool_validates_expected_shape() -> None:
+    summary = validate_real_cases.validate_candidate_pool(
+        generate_real_world_blind_dataset.build_candidate_pool()
+    )
+
+    assert summary["total_rows"] == 150
+    assert summary["status_counts"] == {"accepted": 90, "rejected": 60}
+    assert summary["accepted_decision_counts"] == {
+        "approved": 30,
+        "needs_review": 30,
+        "high_risk": 30,
+    }
+    assert summary["distributions"]["accepted"]["source_platform"] == {
+        "asa": 4,
+        "ftc": 12,
+        "google_ads_transparency": 15,
+        "linkedin_ad_library": 11,
+        "meta_ad_library": 9,
+        "public_brand_page": 30,
+        "tiktok_ccl": 9,
+    }
+    assert summary["distributions"]["rejected"]["source_capture_type"] == {
+        "ad_library_entry": 28,
+        "public_marketing_page": 30,
+        "ruling": 2,
+    }
+
+
+def test_real_world_blind_candidate_pool_keeps_accepted_duplicates_strict() -> None:
+    rows = generate_real_world_blind_dataset.build_candidate_pool()
+    accepted_rows = [row for row in rows if row["adjudication_status"] == "accepted"]
+    accepted_rows[1]["input"]["headline"] = accepted_rows[0]["input"]["headline"]
+
+    with pytest.raises(validate_real_cases.ValidationError, match="duplicate accepted normalized headline"):
+        validate_real_cases.validate_candidate_pool(rows)
+
+
+def test_real_world_blind_candidate_pool_validates_rejected_metadata() -> None:
+    rows = generate_real_world_blind_dataset.build_candidate_pool()
+    rejected_row = next(row for row in rows if row["adjudication_status"] == "rejected")
+    assert rejected_row["rule_tuning_holdout"] is False
+    rejected_row["source_platform"] = "unknown_platform"
+
+    with pytest.raises(validate_real_cases.ValidationError, match="source_platform must be a known blind source platform"):
+        validate_real_cases.validate_candidate_pool(rows)
+
+
+def test_candidate_collector_summary_validates_and_reports_split_distributions(capsys) -> None:
+    assert collect_real_world_candidates.main(["--format", "summary"]) == 0
+
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert "OK candidate pool validated: 150 rows (accepted=90, rejected=60)" in captured.out
+    assert "accepted.expected_decision" in captured.out
+    assert "accepted.source_platform" in captured.out
+    assert "accepted.source_capture_type" in captured.out
+    assert "rejected.source_platform" in captured.out
+    assert "rejected.source_capture_type" in captured.out
