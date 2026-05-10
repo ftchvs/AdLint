@@ -24,6 +24,7 @@ const FALLBACK_OLLAMA_MODELS = [
 ];
 const RULE_ONLY_TIMEOUT_MS = 30000;
 const LOCAL_MODEL_TIMEOUT_MS = 210000;
+const EMBEDDING_MODEL_MARKERS = ["embed", "bge-"];
 const MODEL_STATUSES = ["disabled", "unavailable", "invalid_response", "ok"];
 const ANALYSIS_STEPS = [
   ["intake", "Input normalized", "Copy, campaign context, modules, and optional landing inputs are prepared for review."],
@@ -191,13 +192,18 @@ function modelName(item) {
 function isReviewModelOption(value) {
   if (!value) return false;
   const normalized = value.toLowerCase();
-  return !normalized.includes("embed") && !normalized.startsWith("bge-");
+  return !EMBEDDING_MODEL_MARKERS.some((marker) => normalized.includes(marker));
 }
 
 function populateModelOptions(models) {
   const values = uniqueModelOptions(models);
   const currentValue = ollamaModelInput.value.trim();
-  ollamaModelInput.innerHTML = values.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join("");
+  ollamaModelInput.innerHTML = values
+    .map((model) => {
+      const safe = escapeHtml(model);
+      return `<option value="${safe}">${safe}</option>`;
+    })
+    .join("");
   if (currentValue && values.includes(currentValue)) {
     ollamaModelInput.value = currentValue;
   } else {

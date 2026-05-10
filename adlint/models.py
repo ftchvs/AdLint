@@ -7,6 +7,8 @@ from typing import Any
 Decision = str
 Severity = str
 
+ALL_PLATFORMS = "all"
+
 
 @dataclass(frozen=True)
 class Evidence:

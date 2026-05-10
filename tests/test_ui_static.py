@@ -50,8 +50,8 @@ def test_model_discovery_fetches_models_and_keeps_fallback_option() -> None:
     assert "modelName(payload?.default_model)" in APP_JS
     assert "populateModelOptions(FALLBACK_OLLAMA_MODELS)" in APP_JS
     assert "function isReviewModelOption(value)" in APP_JS
-    assert '!normalized.includes("embed")' in APP_JS
-    assert '!normalized.startsWith("bge-")' in APP_JS
+    assert 'const EMBEDDING_MODEL_MARKERS = ["embed", "bge-"];' in APP_JS
+    assert "EMBEDDING_MODEL_MARKERS.some((marker) => normalized.includes(marker))" in APP_JS
     assert "function uniqueModelOptions(models)" in APP_JS
     assert "for (const model of [...models, ...FALLBACK_OLLAMA_MODELS])" in APP_JS
     assert "if (value && !values.includes(value)) values.push(value)" in APP_JS

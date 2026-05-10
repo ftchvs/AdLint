@@ -304,9 +304,7 @@ def _parse_model_response(response_text: str) -> tuple[dict[str, Any], bool, str
 def _json_response_candidate(response_text: str) -> str:
     text = response_text.strip()
     if text.startswith("```"):
-        lines = text.splitlines()
-        if lines:
-            lines = lines[1:]
+        lines = text.splitlines()[1:]
         if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
         text = "\n".join(lines).strip()
