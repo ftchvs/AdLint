@@ -105,7 +105,6 @@ policies:
     description: Meta campaigns for housing, employment, or financial products/services may require Special Ad Category configuration and targeting limits.
     modules: [platform]
     platforms: [meta]
-    industries: [finance, saas, general]
     requires_review: true
     signals:
       - housing opportunity
@@ -126,7 +125,6 @@ policies:
     description: Meta ads should not request financial, health, or other private information without appropriate permission and review.
     modules: [platform]
     platforms: [meta]
-    industries: [health, wellness, finance]
     requires_review: true
     signals:
       - enter your credit score

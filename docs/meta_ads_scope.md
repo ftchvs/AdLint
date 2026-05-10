@@ -22,9 +22,13 @@ useful before a growth team sends creative to review:
   disclosures, licensing, or authorization checks.
 - **Special Ad Category review**: housing, employment, and financial-products
   contexts that may require Meta campaign-level category settings and targeting
-  limits.
+  limits. This check is intentionally not gated by advertiser vertical because
+  healthcare, SaaS, education, or other advertisers can still run employment,
+  housing, or credit campaigns.
 - **Private information requests**: ad copy asking for health, financial, or
-  similarly private information.
+  similarly private information. This check is intentionally not gated by
+  advertiser vertical because sensitive-data requests can appear in otherwise
+  general campaigns.
 - **Branded content disclosure**: sponsorship, affiliate, promo-code, and paid
   partnership language.
 

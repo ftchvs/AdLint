@@ -45,8 +45,8 @@ Total dataset row count: 346
 | meta_health_wellness_age_targeting_review | platform_policy | platform | meta | health, wellness | 1 | 2 | 0 | 3 |
 | meta_personal_attributes_finance | platform_policy | platform | meta | finance | 1 | 3 | 0 | 4 |
 | meta_personal_attributes_health | platform_policy | platform | meta | health, wellness | 1 | 3 | 0 | 4 |
-| meta_private_information_request | platform_policy | platform | meta | health, wellness, finance | 1 | 2 | 0 | 3 |
-| meta_special_ad_category_review | platform_policy | platform | meta | finance, saas, general | 1 | 3 | 0 | 4 |
+| meta_private_information_request | platform_policy | platform | meta | all | 1 | 2 | 0 | 3 |
+| meta_special_ad_category_review | platform_policy | platform | meta | all | 1 | 3 | 0 | 4 |
 | missing_affiliate_or_sponsor_disclosure | disclosure | disclosure, platform | all | creator, wellness, health, finance | 5 | 19 | 6 | 30 |
 | tiktok_disclosure_risk | platform_policy | platform | tiktok | creator, wellness, health | 4 | 14 | 5 | 23 |
 | tiktok_misleading_content | platform_policy | platform | tiktok | all | 3 | 3 | 1 | 7 |

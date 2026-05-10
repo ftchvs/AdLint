@@ -43,6 +43,37 @@ def test_meta_landing_page_mismatch_stacks_with_platform_review() -> None:
     assert result.decision == "needs_review"
 
 
+
+
+def test_meta_special_ad_category_review_applies_outside_default_verticals() -> None:
+    result = analyze(
+        {
+            "platform": "meta",
+            "industry": "health",
+            "headline": "Hiring now for clinic coordinators",
+            "body": "Apply for this role supporting patient scheduling teams.",
+            "cta": "Apply",
+        }
+    )
+
+    assert "meta_special_ad_category_review" in policy_ids(result)
+
+
+def test_meta_private_information_request_applies_to_general_campaigns() -> None:
+    result = analyze(
+        {
+            "platform": "meta",
+            "industry": "general",
+            "headline": "Check eligibility in minutes",
+            "body": "Enter your credit score to personalize your results.",
+            "cta": "Start",
+        }
+    )
+
+    assert result.decision == "high_risk"
+    assert "meta_private_information_request" in policy_ids(result)
+
+
 def test_high_risk_health_claims_and_tiktok_policy() -> None:
     result = analyze(
         {
