@@ -98,6 +98,45 @@ not a source-label edit.
    unrelated policy IDs while preserving high-risk routing for GoodRx,
    BetterHelp, Cerebral, and patient-retargeting rows.
 
+
+## AND-62 follow-up review (2026-05-09)
+
+Follow-up command set:
+
+```bash
+make real-world-blind-ci
+make test
+```
+
+The LinkedIn miss cluster was safe to address without changing holdout labels:
+explicit promises such as `double your salary`, `guaranteed promotion`, and
+`10x productivity` still use the high-severity policy signals, while softer
+LinkedIn professional-outcome language now routes to `needs_review` through a
+derived medium-severity hit for `linkedin_professional_claim_review`. This
+keeps the hard-promise benchmark behavior intact and removes the two
+`needs_review -> approved` undercalls.
+
+Updated blind-holdout summary after the scoped rule change:
+
+| Metric | Value | Delta vs baseline |
+| --- | ---: | ---: |
+| Dataset rows | 90 | 0 |
+| Decision accuracy | 0.989 | +0.022 |
+| Decision mismatches | 1 | -2 |
+| Policy false negatives | 10 | -2 |
+| Policy false positives | 7 | 0 |
+| Model status | `disabled: 90` | unchanged |
+
+Remaining decision miss:
+
+| Row ID | Expected | Actual | Policy IDs | Review note |
+| --- | --- | --- | --- | --- |
+| `blind_telehealth_info_review` | `needs_review` | `high_risk` | TP `google_health_restricted_category` | Conservative overcall. The expected policy fires, but high policy severity plus regulated-industry scoring crosses the high-risk threshold. Do not lower this without a separate scoring calibration test because it can affect other Google health high-risk rows. |
+
+Remaining policy-ID false negatives are decision-correct high-risk rows except
+for the telehealth overcall above. Treat them as policy-label coverage work,
+not urgent decision-routing defects.
+
 ## Keep/discard decision
 
 Kept:

@@ -277,3 +277,37 @@ def test_faith_leader_event_context_routes_to_sensitive_social_issue_review() ->
 
     assert result.decision == "needs_review"
     assert "brand_safety_sensitive_social_issue" in policy_ids(result)
+
+
+def test_linkedin_soft_professional_outcome_copy_routes_to_review_not_high_risk() -> None:
+    result = analyze(
+        {
+            "platform": "linkedin",
+            "industry": "saas",
+            "headline": "Productivity system for busy teams",
+            "body": "Use the workflow to improve team output and support faster weekly planning.",
+            "cta": "View workflow",
+        }
+    )
+
+    hits = {hit.policy_id: hit for hit in result.policy_hits}
+    assert result.decision == "needs_review"
+    assert hits["linkedin_professional_claim_review"].severity == "medium"
+    assert hits["linkedin_professional_claim_review"].source == "derived_rules"
+
+
+def test_linkedin_hard_professional_outcome_copy_stays_high_risk() -> None:
+    result = analyze(
+        {
+            "platform": "linkedin",
+            "industry": "general",
+            "headline": "Double your salary with this system",
+            "body": "Use our career workflow and double your salary after a few weeks of outreach.",
+            "cta": "Start system",
+        }
+    )
+
+    hits = {hit.policy_id: hit for hit in result.policy_hits}
+    assert result.decision == "high_risk"
+    assert hits["linkedin_professional_claim_review"].severity == "high"
+    assert hits["linkedin_professional_claim_review"].source == "rules"
