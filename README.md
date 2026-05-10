@@ -63,7 +63,7 @@ make api  # then open http://127.0.0.1:8000/ui/
 - FastAPI app with `GET /health`, `GET /models`, `POST /analyze`, and
   `POST /eval`.
 - One-page Web UI at `/ui/` for the main local review workflow, including
-  model selection and a Local model toggle that defaults on.
+  model selection and opt-in Local model review controls.
 - YAML policy files under `adlint/policies/`, plus custom policy paths.
 - Deterministic rule engine with policy-module, platform, and industry filters.
 - Transparent score thresholds for `approved`, `needs_review`, and `high_risk`.
