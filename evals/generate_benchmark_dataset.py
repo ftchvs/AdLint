@@ -8,7 +8,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 SEED_PATH = ROOT / "evals" / "datasets" / "seed_ads.jsonl"
 OUTPUT_PATH = ROOT / "evals" / "datasets" / "rule_benchmark_v1.jsonl"
-TARGET_EXAMPLES = 209
+TARGET_EXAMPLES = 213
 
 
 def main() -> int:
@@ -324,6 +324,32 @@ def _meta_rows() -> list[dict[str, Any]]:
         ("Retail planning calendar", "Track seasonal promotions, tasks, and owner notes.", "View calendar"),
         ("Wellness event schedule", "Find voluntary classes and preparation reminders.", "Browse events"),
     ]
+    approved_near_miss = [
+        (
+            "Hiring pipeline dashboard",
+            "Plan recruiting tasks and approval notes without advertising a specific role.",
+            "Request demo",
+            "saas",
+        ),
+        (
+            "Insurance education webinar",
+            "Learn how coverage terms work; no quote or application is offered.",
+            "Register",
+            "finance",
+        ),
+        (
+            "Creator desk tour",
+            "A personal workflow walkthrough with gear notes and editing tips.",
+            "Watch",
+            "creator",
+        ),
+        (
+            "Mortgage calculator worksheet",
+            "Estimate hypothetical payments for planning; no lender matching is provided.",
+            "Download",
+            "finance",
+        ),
+    ]
     creator_review = [
         ("Paid partnership desk setup", "Use my affiliate code for the partner product.", "Shop now"),
         ("Sponsored morning routine", "The partner product is featured with a promo code.", "Use code"),
@@ -410,6 +436,19 @@ def _meta_rows() -> list[dict[str, Any]]:
     ]
 
     rows = _fixed_rows("benchmark-meta-approved", "meta", "saas", approved, "approved", [])
+    rows.extend(
+        _row(
+            f"benchmark-meta-approved-near-miss-{index:03d}",
+            "meta",
+            industry,
+            headline,
+            body,
+            cta,
+            "approved",
+            [],
+        )
+        for index, (headline, body, cta, industry) in enumerate(approved_near_miss, start=1)
+    )
     rows.extend(
         _fixed_rows(
             "benchmark-meta-creator",

@@ -2,14 +2,14 @@
 
 Validation status: OK
 Total bundled policy count: 40
-Total dataset row count: 342
+Total dataset row count: 346
 
 ## Dataset Row Counts
 
 | Dataset | Rows | Coverage requirement |
 | --- | ---: | --- |
 | evals/datasets/real_cases_v1.jsonl | 75 | diagnostic only |
-| evals/datasets/rule_benchmark_v1.jsonl | 209 | required complete |
+| evals/datasets/rule_benchmark_v1.jsonl | 213 | required complete |
 | evals/datasets/seed_ads.jsonl | 58 | required complete |
 
 ## Coverage

@@ -701,7 +701,7 @@ def test_benchmark_dataset_is_reproducible_labeled_and_large_enough() -> None:
     dataset_path = ROOT / "evals" / "datasets" / "rule_benchmark_v1.jsonl"
     dataset_rows = run_eval._load_rows(dataset_path)
 
-    assert len(dataset_rows) == 209
+    assert len(dataset_rows) == 213
     assert len(dataset_rows) == len({row["id"] for row in dataset_rows})
     assert {row["expected_decision"] for row in dataset_rows} == {"approved", "needs_review", "high_risk"}
     assert dataset_rows == generated_rows
@@ -740,7 +740,7 @@ def test_benchmark_dataset_reports_policy_and_category_precision_recall() -> Non
         max_review_notes=100,
     )
 
-    assert metrics["total_examples"] == 209
+    assert metrics["total_examples"] == 213
     assert metrics["decision_accuracy"] == 1.0
     assert {"approved", "needs_review", "high_risk"} <= metrics["confusion_matrix"].keys()
     assert "health_claims" in metrics["category_metrics"]
