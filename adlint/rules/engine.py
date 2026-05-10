@@ -66,6 +66,7 @@ def run_rule_checks(
 
     hits.extend(_derived_landing_page_hits(submission, landing_page, policies))
     hits.extend(_derived_privacy_hits(submission, landing_page, policies))
+    hits.extend(_derived_linkedin_professional_claim_hits(submission, fields, policies, hits))
     return dedupe_hits(hits)
 
 
@@ -142,6 +143,49 @@ def _match_hipaa_tracking_policy(policy: Policy, fields: dict[str, str]) -> list
     if not hipaa_context_evidence:
         return []
     return [*tracker_evidence, *hipaa_context_evidence]
+
+
+def _derived_linkedin_professional_claim_hits(
+    submission: Submission,
+    fields: dict[str, str],
+    policies: list[Policy],
+    existing_hits: list[PolicyHit],
+) -> list[PolicyHit]:
+    if submission.platform != "linkedin":
+        return []
+    if any(hit.policy_id == "linkedin_professional_claim_review" for hit in existing_hits):
+        return []
+
+    policy = next((item for item in policies if item.id == "linkedin_professional_claim_review"), None)
+    if policy is None:
+        return []
+
+    soft_professional_signals = (
+        "improve team output",
+        "faster weekly planning",
+        "promotion workshop",
+        "promotion packets",
+    )
+    evidence = _match_signals(soft_professional_signals, fields)
+    if not evidence:
+        return []
+
+    return [
+        PolicyHit(
+            policy_id=policy.id,
+            severity="medium",
+            category=policy.category,
+            evidence=evidence[:MAX_EVIDENCE_PER_POLICY],
+            recommended_action=policy.recommended_action,
+            requires_review=True,
+            description=(
+                f"{policy.description} Soft professional-outcome language is routed "
+                "to review without the high-risk treatment reserved for explicit guarantees."
+            ),
+            source="derived_rules",
+            iab_taxonomy=policy.iab_taxonomy,
+        )
+    ]
 
 
 def _derived_landing_page_hits(
