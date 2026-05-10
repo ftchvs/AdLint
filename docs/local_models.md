@@ -5,9 +5,13 @@ AdLint adds an Ollama-compatible model pass as decision-support metadata; it
 does not replace the rule-based findings or provide legal advice.
 
 The Web UI starts in rule-only mode and lets users opt into Local model review.
-API callers control the same behavior with `model_enabled`,
-`model_affects_score`, and `ollama_model` in `POST /analyze`. CLI users can
-pass `--enable-model`, `--model-affects-score`, and `--ollama-model`.
+The model selector is populated from local Ollama tags when available, filters
+obvious embedding-only models, and falls back to known review-model options.
+Client-side timeout recovery keeps a slow/stuck local model call from leaving
+the form disabled forever. API callers control the same behavior with
+`model_enabled`, `model_affects_score`, and `ollama_model` in `POST /analyze`.
+CLI users can pass `--enable-model`, `--model-affects-score`, and
+`--ollama-model`.
 
 Example:
 
@@ -26,7 +30,8 @@ Environment variables:
   The default is 45 seconds; eval targets use 300 seconds for slow local rows.
 - `ADLINT_OLLAMA_NUM_PREDICT`: optional positive token cap for local model
   generation. Leave unset for Ollama defaults; set it for evals when a model
-  times out while producing verbose JSON.
+  times out while producing verbose JSON. The development API target uses a
+  bounded default so local review runs fail closed instead of hanging forever.
 
 API fields:
 
@@ -53,6 +58,11 @@ Local model output is treated as untrusted runtime metadata until it passes the
 - `decision` is one of `approved`, `needs_review`, or `high_risk`.
 - `categories` and `evidence` are arrays of strings.
 - `recommended_action`, when present, is a string.
+
+AdLint sends deterministic local classifier calls with JSON formatting,
+`temperature: 0`, and `think: false` where supported. Some local models still
+wrap JSON in Markdown fences or pre/post text, so AdLint extracts the enclosed
+JSON object before schema validation.
 
 Invalid JSON, unknown decisions, and malformed fields produce
 `status: invalid_response`, `valid_response: false`, and `ignored: true`. Those
@@ -116,26 +126,30 @@ is ready for score impact.
 ## Current Model Recommendation
 
 Keep deterministic rules as the production baseline. The recommended local
-model default remains `gpt-oss-safeguard:20b` with the normal Ollama generation
-settings. Use local model output as review metadata only until measured runs
-show reliable decision accuracy and detailed YAML policy-id recall.
+model default remains `gpt-oss-safeguard:20b`. Use local model output as review
+metadata only until measured runs show reliable decision accuracy, detailed
+YAML policy-id recall, and acceptable false-review burden.
 
 Run `make model-smoke` before spending time on a full live model-quality run.
-The 2026-05-04 smoke used the first three seed rows and produced:
+The older 2026-05-04 smoke showed why score impact remains off by default:
+models could add generic review notes or invalid JSON even when hybrid rule
+accuracy stayed intact.
 
-| Configuration | Runtime | Model-only rows | Model-only accuracy | Hybrid accuracy | Model status | Generic review additions | Detailed policy-id additions | Rescued rule false negatives |
-| --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: |
-| `gpt-oss-safeguard:20b` default | 81.508s | 3 | 0.333 | 1.000 | `ok: 3` | 2 | 0 | 0 |
-| `gpt-oss-safeguard:20b`, `ADLINT_OLLAMA_NUM_PREDICT=128` | 28.081s | 0 | 0.000 | 1.000 | `invalid_response: 3` | 3 | 0 | 0 |
+PR #16 improved runtime stability by disabling Ollama thinking output where
+supported, accepting fenced JSON, and bounding local generation. With
+`ADLINT_OLLAMA_TIMEOUT=180` and `ADLINT_OLLAMA_NUM_PREDICT=1024`, a live local
+matrix reported `model.status: ok` for installed review models including
+`gpt-oss-safeguard:20b`, `gpt-oss:20b`, `qwen3-coder:30b`,
+`qwen3.5:35b-a3b`, and `gemma4:26b`. Treat that as runtime compatibility, not
+proof of better policy judgment.
 
-The capped-token setting is faster, but it produced invalid structured
-responses on every model-required smoke row. Do not use it as a default quality
-setting.
+Model selection guidance:
 
-An additional installed model, `qwen3.5:35b-a3b`, was tested on the blind
-holdout as a manual diagnostic. The run took 2749.144 seconds, returned
-`invalid_response: 90` for model-only and hybrid model calls, scored 0 model-only
-rows, and reduced hybrid decision accuracy to 0.656 on the pre-triage blind
-baseline. A later smoke attempt was stopped after more than four minutes with no
-completed output. Treat this model as rejected for current AdLint eval use until
-its structured JSON behavior is fixed.
+- Prefer `gpt-oss-safeguard:20b` as the default local reviewer until newer
+  evals show another model has better useful-note precision and lower review
+  burden.
+- Use `ADLINT_OLLAMA_TIMEOUT` and `ADLINT_OLLAMA_NUM_PREDICT` for slow models
+  during manual evals, but do not infer quality from `status: ok` alone.
+- Keep `model_affects_score` off unless you are explicitly measuring whether a
+  model's findings improve outcomes without adding unacceptable false review
+  burden.
