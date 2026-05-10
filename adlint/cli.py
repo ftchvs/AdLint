@@ -31,7 +31,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     scan_parser.add_argument(
         "--enable-model",
         action="store_true",
-        help="Call a local Ollama-compatible classifier in addition to deterministic rules.",
+        help="Call a local Ollama-compatible classifier for metadata-only review notes.",
+    )
+    scan_parser.add_argument(
+        "--model-affects-score",
+        action="store_true",
+        help="Allow valid local-model findings to join policy hits and affect scoring. Off by default.",
     )
     scan_parser.add_argument(
         "--ollama-model",
@@ -57,6 +62,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         config = load_config(args.config)
         if args.enable_storage or args.storage_path:
             config["storage_enabled"] = True
+        if args.model_affects_score:
+            config["model_affects_score"] = True
         if args.storage_path:
             config["storage_path"] = args.storage_path
         result = analyze(

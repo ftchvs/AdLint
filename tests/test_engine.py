@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from adlint.engine import analyze
+from adlint.models import Evidence, PolicyHit
 
 
 def policy_ids(result) -> set[str]:
@@ -203,6 +204,72 @@ def test_ollama_model_without_model_enabled_does_not_call_classifier(monkeypatch
     )
 
     assert result.model == {"enabled": False, "provider": None, "status": "disabled"}
+
+
+def test_model_review_is_metadata_only_by_default(monkeypatch) -> None:
+    def fake_classifier(submission, *, model=None, endpoint=None, landing_page=None):
+        return [
+            PolicyHit(
+                policy_id="model_policy_review",
+                severity="medium",
+                category="model_review",
+                evidence=[Evidence(text="model concern", source="model")],
+                recommended_action="Review model concern.",
+                requires_review=True,
+                source="ollama",
+            )
+        ], {"enabled": True, "provider": "ollama", "status": "ok"}
+
+    monkeypatch.setattr("adlint.engine.classify_with_ollama", fake_classifier)
+
+    result = analyze(
+        {
+            "platform": "google",
+            "industry": "general",
+            "headline": "Download campaign checklist",
+            "body": "A free worksheet for launch planning.",
+            "cta": "Download",
+            "model_enabled": True,
+        }
+    )
+
+    assert result.decision == "approved"
+    assert result.policy_hits == []
+    assert result.model["affects_score"] is False
+    assert [finding["policy_id"] for finding in result.model["findings"]] == ["model_policy_review"]
+
+
+def test_model_review_can_affect_score_when_explicitly_enabled(monkeypatch) -> None:
+    def fake_classifier(submission, *, model=None, endpoint=None, landing_page=None):
+        return [
+            PolicyHit(
+                policy_id="model_policy_review",
+                severity="medium",
+                category="model_review",
+                evidence=[Evidence(text="model concern", source="model")],
+                recommended_action="Review model concern.",
+                requires_review=True,
+                source="ollama",
+            )
+        ], {"enabled": True, "provider": "ollama", "status": "ok"}
+
+    monkeypatch.setattr("adlint.engine.classify_with_ollama", fake_classifier)
+
+    result = analyze(
+        {
+            "platform": "google",
+            "industry": "general",
+            "headline": "Download campaign checklist",
+            "body": "A free worksheet for launch planning.",
+            "cta": "Download",
+            "model_enabled": True,
+            "model_affects_score": True,
+        }
+    )
+
+    assert result.decision == "needs_review"
+    assert [hit.policy_id for hit in result.policy_hits] == ["model_policy_review"]
+    assert result.model["affects_score"] is True
 
 
 def test_clinically_backed_health_claim_requires_substantiation_review() -> None:

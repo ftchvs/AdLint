@@ -12,6 +12,7 @@ from adlint.engine import analyze
 from adlint.models import PolicyHit, Submission
 from adlint.policy import load_policies
 from adlint.scoring.core import decision_for_score, score_hits
+from adlint.scrapers.landing_page import extract_landing_page
 
 
 DECISION_LABELS = ("approved", "needs_review", "high_risk")
@@ -400,8 +401,11 @@ def _score_row(
 
 
 def _score_analyze(row: dict[str, Any], *, mode: str, ollama_model: str | None) -> dict[str, Any]:
+    input_payload = dict(row["input"])
+    if mode == "hybrid":
+        input_payload["model_affects_score"] = True
     result = analyze(
-        row["input"],
+        input_payload,
         enable_model=True if mode == "hybrid" else False,
         ollama_model=ollama_model,
     )
@@ -410,7 +414,12 @@ def _score_analyze(row: dict[str, Any], *, mode: str, ollama_model: str | None) 
 
 def _score_model_only(row: dict[str, Any], *, ollama_model: str | None) -> dict[str, Any]:
     submission = Submission.from_dict(row["input"])
-    model_hits, model_info = classify_with_ollama(submission, model=ollama_model)
+    landing_page = extract_landing_page(submission.landing_page_url, submission.landing_page_html)
+    model_hits, model_info = classify_with_ollama(
+        submission,
+        model=ollama_model,
+        landing_page=landing_page,
+    )
     if model_info.get("status") != "ok":
         return {
             "id": row.get("id"),

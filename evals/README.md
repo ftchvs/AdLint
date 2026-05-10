@@ -99,6 +99,26 @@ Compare rule-only, model-only, and hybrid modes:
 make model-benchmark
 ```
 
+In product scans, local model review is metadata-only by default. Eval
+`hybrid` mode intentionally enables model score impact so the report can
+measure best-case and worst-case contribution: decision changes, regressions,
+generic review burden, detailed policy-id additions, and rescued rule false
+negatives.
+
+Measure whether model-added review notes are useful to a reviewer rather than
+just noisy:
+
+```bash
+make model-benchmark
+make model-usefulness
+```
+
+`model-usefulness` reads `evals/results/model_comparison.json` and labels
+model-added findings using `datasets/model_review_usefulness_v1.jsonl`. It
+reports useful-note precision, false-review burden, generic-review burden,
+invalid-response rate, and examples for review. These labels judge reviewer
+usefulness only; they are not compliance or platform-approval labels.
+
 Run a short required-model smoke check against the configured local model:
 
 ```bash

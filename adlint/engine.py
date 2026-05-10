@@ -37,8 +37,15 @@ def analyze(
     model_info = {"enabled": False, "provider": None, "status": "disabled"}
 
     if submission.model_enabled:
-        model_hits, model_info = classify_with_ollama(submission, model=ollama_model)
-        hits = dedupe_hits([*hits, *model_hits])
+        model_hits, model_info = classify_with_ollama(
+            submission,
+            model=ollama_model,
+            landing_page=landing_page,
+        )
+        model_info["affects_score"] = submission.model_affects_score
+        model_info["findings"] = [hit.to_dict() for hit in model_hits]
+        if submission.model_affects_score:
+            hits = dedupe_hits([*hits, *model_hits])
 
     risk_score = score_hits(hits, submission, resolved_scoring_config)
     decision = decision_for_score(risk_score, resolved_scoring_config)

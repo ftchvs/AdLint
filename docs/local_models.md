@@ -4,10 +4,10 @@ AdLint's deterministic rules always run. When local model review is enabled,
 AdLint adds an Ollama-compatible model pass as decision-support metadata; it
 does not replace the rule-based findings or provide legal advice.
 
-The Web UI enables the Local model toggle by default and lets users select a
-model. Users can turn the toggle off for a rule-only run. API callers control
-the same behavior with `model_enabled` and `ollama_model` in `POST /analyze`.
-CLI users can pass `--enable-model` and `--ollama-model`.
+The Web UI starts in rule-only mode and lets users opt into Local model review.
+API callers control the same behavior with `model_enabled`,
+`model_affects_score`, and `ollama_model` in `POST /analyze`. CLI users can
+pass `--enable-model`, `--model-affects-score`, and `--ollama-model`.
 
 Example:
 
@@ -33,14 +33,51 @@ API fields:
 - `GET /models`: returns local model configuration and available model choices
   for clients such as the Web UI.
 - `POST /analyze` `model_enabled`: enables or disables the local model pass for
-  the request. The Web UI sends `true` by default unless the Local model toggle
-  is off.
+  the request. The Web UI sends `false` by default unless the Local model
+  toggle is enabled.
+- `POST /analyze` `model_affects_score`: lets valid model findings join
+  `policy_hits` and affect the final score. The default is `false`, so local
+  model output remains metadata-only.
 - `POST /analyze` `ollama_model`: overrides `ADLINT_OLLAMA_MODEL` for that
   request when a specific model is selected.
 
 If the model endpoint is unavailable, AdLint still returns rule-based findings
 and marks the model status as `unavailable` in the JSON output. The rule-based
 decision, risk score, policy hits, and rewrites are still returned.
+
+## Model trust boundary
+
+Local model output is treated as untrusted runtime metadata until it passes the
+`adlint.model_review.v1` schema. AdLint validates that:
+
+- `decision` is one of `approved`, `needs_review`, or `high_risk`.
+- `categories` and `evidence` are arrays of strings.
+- `recommended_action`, when present, is a string.
+
+Invalid JSON, unknown decisions, and malformed fields produce
+`status: invalid_response`, `valid_response: false`, and `ignored: true`. Those
+responses add no findings and never affect scoring.
+
+Landing-page content is also treated as untrusted evidence. The prompt wraps ad
+copy, extracted landing-page fields, and optional HTML excerpts in explicit
+untrusted sections and tells the model not to follow instructions embedded in
+those fields. AdLint prefers the structured landing-page snapshot — title,
+headings, visible claims, forms, disclaimers, pricing text, trackers, and fetch
+errors — over raw HTML.
+
+## What the model can change
+
+| Output | Default rule-only | `model_enabled: true` | `model_affects_score: true` |
+| --- | --- | --- | --- |
+| Deterministic rules | Yes | Yes | Yes |
+| Final decision / risk score | Rules only | Rules only | Rules + valid model findings |
+| `policy_hits` | Rule hits | Rule hits | Rule hits plus valid model hits |
+| `model.status` | `disabled` | Runtime/schema status | Runtime/schema status |
+| `model.findings` | Empty/absent | Valid model findings | Valid model findings |
+| Invalid model response | N/A | Ignored | Ignored |
+
+Keep score impact off unless you are explicitly evaluating model contribution
+or running a workflow that accepts model-added review burden.
 
 For production-reliability diagnostics, run the balanced 75-row public-source
 real-case comparison:
@@ -61,6 +98,20 @@ artifacts under `evals/results/`. It sets `ADLINT_OLLAMA_TIMEOUT=300` for the
 eval process because local inference can be slow on sensitive-context rows.
 Treat model-only and hybrid metrics as measured local-model quality for that
 run, not as legal-compliance or platform approval evidence.
+
+To measure whether model-added notes are actually useful to a human reviewer,
+run:
+
+```bash
+make model-benchmark
+make model-usefulness
+```
+
+`model-usefulness` labels model-added findings against
+`evals/datasets/model_review_usefulness_v1.jsonl` and reports useful-note
+precision, false-review burden, generic-review burden, and invalid-response
+rate. This is the current signal/noise loop for deciding whether a local model
+is ready for score impact.
 
 ## Current Model Recommendation
 

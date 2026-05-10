@@ -122,6 +122,7 @@ class Submission:
     landing_page_html: str | None = None
     policy_modules: tuple[str, ...] = ()
     model_enabled: bool = False
+    model_affects_score: bool = False
     logging_enabled: bool = False
     log_path: str | None = None
     storage_enabled: bool = False
@@ -142,6 +143,7 @@ class Submission:
             landing_page_html=raw.get("landing_page_html"),
             policy_modules=tuple(str(item) for item in modules),
             model_enabled=bool(raw.get("model_enabled", False)),
+            model_affects_score=bool(raw.get("model_affects_score", False)),
             logging_enabled=bool(raw.get("logging_enabled", False)),
             log_path=raw.get("log_path"),
             storage_enabled=bool(raw.get("storage_enabled", False)),

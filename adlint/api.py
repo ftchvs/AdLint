@@ -26,6 +26,7 @@ class AnalyzeRequest(BaseModel):
     policy_modules: list[str] = Field(default_factory=list)
     modules: list[str] | None = None
     model_enabled: bool = False
+    model_affects_score: bool = False
     ollama_model: str | None = None
     logging_enabled: bool = False
     log_path: str | None = None
