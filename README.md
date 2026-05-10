@@ -11,6 +11,41 @@ evidence, recommended actions, and safer rewrite suggestions.
 AdLint is decision-support software, not legal advice. It does not guarantee
 platform approval or make definitive statutory violation determinations.
 
+
+## Why AdLint?
+
+Ad review usually fails late: after creative is built, traffic is ready, or a
+platform review blocks launch. Enterprise compliance tools can be opaque,
+expensive, and hard to adapt to a team's actual growth workflow. Generic LLM
+review is flexible, but often ungrounded and inconsistent.
+
+AdLint takes a different path:
+
+- **Local-first**: run checks without sending campaign copy to a hosted service.
+- **Policy-as-code**: review logic lives in auditable YAML files.
+- **Explainable**: every decision includes policy IDs, evidence, severities, and recommended actions.
+- **Composable**: use it as a CLI, FastAPI service, importable Python engine, or local Web UI.
+- **Benchmark-oriented**: eval datasets, policy coverage, and blind holdout diagnostics are first-class.
+- **Legally careful**: AdLint flags review risk; it does not promise compliance or platform approval.
+
+AdLint is for growth teams that want a preflight check before legal/platform
+review, not a black-box replacement for reviewers.
+
+## Demo surfaces
+
+AdLint currently has three demo-friendly entry points:
+
+1. **CLI** — scan a JSON/YAML campaign config and write JSON/Markdown reports.
+2. **Local Web UI** — paste copy, configure platform/industry/model settings, review findings, and export reports.
+3. **FastAPI** — embed `/analyze` into internal tools or CI workflows.
+
+Suggested screenshot/GIF flow for the public repo:
+
+```bash
+adlint scan examples/high_risk_tiktok_health.json --format markdown
+make api  # then open http://127.0.0.1:8000/ui/
+```
+
 ## What runs today
 
 - Python package with the `adlint scan` CLI.
@@ -419,6 +454,21 @@ endpoint.
 
 If the model endpoint is unavailable, AdLint still returns rule-based findings
 and marks the model status as `unavailable`.
+
+
+## Contributing
+
+Contributions are welcome, especially policy rules, synthetic eval cases,
+platform-specific examples, documentation, and tests for edge cases. Start with
+[`CONTRIBUTING.md`](CONTRIBUTING.md) and the issue templates.
+
+High-value contribution areas:
+
+- Meta Ads policy coverage.
+- More public-source/paraphrased eval cases.
+- Landing-page extraction improvements.
+- Safer rewrite-quality evaluation.
+- Docs, examples, screenshots, and launch polish.
 
 ## Related docs
 
