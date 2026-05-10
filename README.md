@@ -472,6 +472,7 @@ High-value contribution areas:
 
 ## Related docs
 
+- `docs/open_source_goal.md`
 - `docs/policy_design.md`
 - `docs/meta_ads_scope.md`
 - `docs/legal_disclaimer.md`

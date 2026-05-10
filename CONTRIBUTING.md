@@ -1,6 +1,6 @@
 # Contributing to AdLint
 
-Thanks for helping improve AdLint. The project is local-first decision-support software for preflight ad, landing-page, brand-safety, privacy, and disclosure checks.
+Thanks for helping improve AdLint. The project is local-first decision-support software for preflight ad, landing-page, brand-safety, privacy, and disclosure checks. The current OSS project goal is documented in `docs/open_source_goal.md`.
 
 ## Good first contributions
 
