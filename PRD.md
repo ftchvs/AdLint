@@ -165,8 +165,9 @@ Implemented platform modules:
   risk.
 - TikTok Ads: misleading content, weight-management claims, and disclosure risk.
 - LinkedIn Ads: sensitive targeting, discrimination, and professional claims.
-
-Meta remains a future platform module.
+- Meta Ads: personal attributes, health and appearance results, health/wellness
+  age-targeting review, financial-services authorization, Special Ad Category
+  review, private-information requests, and branded-content disclosure.
 
 ### 7.3 Health privacy risk
 
@@ -387,7 +388,7 @@ Representative output shape:
 | FR-1 | Implemented | Users can submit ad copy with headline, body, and CTA through CLI, API, or the Python engine. |
 | FR-2 | Implemented | Users can provide an optional `landing_page_url` or `landing_page_html`. |
 | FR-3 | Partial | The system extracts title, headings, visible claims, forms, pricing text, disclaimers, and trackers from static HTML. JavaScript rendering and richer extraction are future work. |
-| FR-4 | Implemented | Users can select `google`, `tiktok`, or `linkedin` policy behavior through platform metadata. Meta is future work. |
+| FR-4 | Implemented | Users can select `google`, `tiktok`, `linkedin`, or `meta` policy behavior through platform metadata. |
 | FR-5 | Implemented | Users can select industries such as `health`, `wellness`, `finance`, `saas`, `creator`, or `general`. |
 | FR-6 | Implemented | Deterministic rule checks run first using policy signals, regexes, keyword patterns, and heuristics. |
 | FR-7 | Partial | Ollama classification can run as a hybrid pass behind `model_enabled` or `--enable-model`; deterministic rules always run, and live model quality is not yet benchmarked. |
@@ -599,7 +600,7 @@ The current eval runner reports:
 
 ### 14.2 Future benchmark
 
-Create 200-500 labeled examples over time across several axes.
+Maintain and expand the 209-example labeled benchmark over time across several axes.
 
 Decision labels:
 
@@ -643,7 +644,7 @@ Future benchmark reports should include:
 - Risk scoring.
 - JSON and Markdown reports.
 - Deterministic safer rewrites.
-- 50 curated seed eval examples.
+- 58 curated seed eval examples.
 - Documentation and legal boundary notes.
 - Opt-in JSONL logging.
 
@@ -671,7 +672,7 @@ Future benchmark reports should include:
 
 ### Phase 4: Evals and benchmark
 
-- 200-500 labeled examples.
+- Maintain and expand the 209-example labeled benchmark.
 - Confusion matrix.
 - False positive and false negative review notes.
 - Rule-only vs. model-only vs. hybrid comparison.
@@ -754,7 +755,7 @@ AdLint becomes successful beyond the MVP if:
 - A user can analyze an ad and landing page in under 60 seconds on a local
   Apple Silicon workstation with adequate memory.
 - The Web UI makes the main review workflow accessible to non-engineers.
-- A 200-500 example benchmark shows stable recall for high-severity health,
+- A maintained 209+ example benchmark shows stable recall for high-severity health,
   privacy, and safety categories.
 - Teams can tune scoring with `scoring.yml` without editing code.
 - Local model use is benchmarked and documented with clear limitations.

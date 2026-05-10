@@ -33,6 +33,18 @@ EXAMPLE_EXPECTATIONS = {
         "needs_review",
         {"meta_branded_content_disclosure", "missing_affiliate_or_sponsor_disclosure"},
     ),
+    "meta_financial_services_review.json": (
+        "needs_review",
+        {"meta_financial_services_authorization_review"},
+    ),
+    "meta_private_health_info_high_risk.json": (
+        "high_risk",
+        {"meta_private_information_request"},
+    ),
+    "meta_special_ad_category_review.json": (
+        "needs_review",
+        {"meta_financial_services_authorization_review", "meta_special_ad_category_review"},
+    ),
     "needs_review_google_wellness.json": (
         "needs_review",
         {"tracking_pixel_risk", "health_form_tracking_risk"},

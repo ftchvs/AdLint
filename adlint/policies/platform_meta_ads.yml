@@ -47,8 +47,90 @@ policies:
       - melts fat
       - belly fat
       - dramatic results
+      - body-shaming
+      - perfect body
+      - hate your body
     recommended_action: Avoid transformation framing and use qualified wellness-support language.
     rewrite_strategy: wellness_support
+
+  - id: meta_health_wellness_age_targeting_review
+    severity: medium
+    category: platform_policy
+    description: Meta health, weight-loss, cosmetic, sexual-health, and reproductive-health ads can require 18+ targeting review.
+    modules: [platform]
+    platforms: [meta]
+    industries: [health, wellness]
+    requires_review: true
+    signals:
+      - weight loss pills
+      - weight loss supplement
+      - cosmetic procedure
+      - botox
+      - reproductive health
+      - contraception
+      - family planning
+      - sexual health
+    recommended_action: Confirm age targeting and health/wellness policy eligibility before launch.
+    rewrite_strategy: add_review_reminder
+
+  - id: meta_financial_services_authorization_review
+    severity: medium
+    category: platform_policy
+    description: Meta financial product ads can require authorization, licensing, disclosures, and 18+ targeting review.
+    modules: [platform]
+    platforms: [meta]
+    industries: [finance]
+    requires_review: true
+    signals:
+      - credit card
+      - loan
+      - insurance
+      - investment opportunity
+      - mortgage
+      - refinance
+      - apply for credit
+      - cash advance
+    recommended_action: Confirm financial-services authorization, required disclosures, and 18+ targeting before launch.
+    rewrite_strategy: add_review_reminder
+
+  - id: meta_special_ad_category_review
+    severity: medium
+    category: platform_policy
+    description: Meta campaigns for housing, employment, or financial products/services may require Special Ad Category configuration and targeting limits.
+    modules: [platform]
+    platforms: [meta]
+    industries: [finance, saas, general]
+    requires_review: true
+    signals:
+      - housing opportunity
+      - apartment rental
+      - mortgage
+      - job opening
+      - hiring
+      - employment opportunity
+      - financial products and services
+      - credit offer
+    recommended_action: Confirm Special Ad Category selection, country settings, and audience restrictions before launch.
+    rewrite_strategy: add_review_reminder
+
+  - id: meta_private_information_request
+    severity: high
+    category: platform_policy
+    description: Meta ads should not request financial, health, or other private information without appropriate permission and review.
+    modules: [platform]
+    platforms: [meta]
+    industries: [health, wellness, finance]
+    requires_review: true
+    signals:
+      - enter your credit score
+      - share your bank account
+      - provide your income
+      - submit your medical history
+      - upload your diagnosis
+      - tell us your symptoms
+      - provide your health information
+    recommended_action: Remove private-information requests from ad creative and review the landing-page intake flow.
+    rewrite_strategy: add_review_reminder
 
   - id: meta_branded_content_disclosure
     severity: medium

@@ -5,7 +5,7 @@
 AdLint is a local-first ad preflight system for campaign copy, landing-page
 signals, privacy risk, disclosure checks, and brand-safety review. This short
 paper reports the current deterministic evaluation of AdLint's policy-as-code
-engine on a 200-example synthetic benchmark. The benchmark reaches 1.000
+engine on a 209-example synthetic benchmark. The benchmark reaches 1.000
 decision accuracy across `approved`, `needs_review`, and `high_risk` labels,
 with no decision mismatches and no policy false-positive or false-negative
 review notes in the included review window. The main observed limitation is
@@ -29,8 +29,8 @@ deterministic policy engine remains the reproducible baseline.
 
 The evaluation uses three local JSONL datasets:
 
-- `evals/datasets/seed_ads.jsonl`: a 54-example smoke dataset.
-- `evals/datasets/rule_benchmark_v1.jsonl`: a 200-example benchmark generated
+- `evals/datasets/seed_ads.jsonl`: a 58-example smoke dataset.
+- `evals/datasets/rule_benchmark_v1.jsonl`: a 209-example benchmark generated
   from the seed set plus policy-author authored synthetic variants.
 - `evals/datasets/real_cases_v1.jsonl`: a 75-example public-source diagnostic
   set balanced across 25 approved, 25 needs-review, and 25 high-risk expected
@@ -89,7 +89,7 @@ make real-cases-model-quality
 
 ## 3. Results
 
-The 200-example rule-only benchmark completed without skipped examples.
+The 209-example rule-only benchmark completed without skipped examples.
 
 | Metric | Value |
 | --- | ---: |
@@ -114,18 +114,18 @@ Category-level precision and recall were 1.000 for all tracked categories in
 the adjudicated benchmark.
 
 The 1.000 benchmark score should be read as internal regression evidence, not
-as external reliability. If the 200 examples were a representative random
-sample, 200/200 correct decisions would imply an approximate 95% Wilson lower
+as external reliability. If the 209 examples were a representative random
+sample, 209/209 correct decisions would imply an approximate 95% Wilson lower
 bound of 0.981. They are not random; they are authored policy coverage.
 
 The all-modes fallback comparison showed that rule-only and hybrid modes both
-scored 200 examples with 1.000 decision accuracy. Model-only skipped all 200
+scored 209 examples with 1.000 decision accuracy. Model-only skipped all 209
 rows because the local model endpoint was unavailable. Hybrid retained
 rule-based decisions and attached unavailable-model metadata.
 
 A separate local smoke run should be used before interpreting model quality. It
 requires the configured Ollama model to return status `ok` on a small subset
-before teams spend time on the full 200-row model comparison.
+before teams spend time on the full 209-row model comparison.
 
 The latest default smoke run reached status `ok` for all three model-required
 rows. Hybrid decision accuracy stayed at 1.000 on the subset, while model-only

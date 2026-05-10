@@ -79,6 +79,10 @@ def test_bundled_meta_ads_policy_module_is_narrow_and_platform_scoped() -> None:
         "meta_personal_attributes_health",
         "meta_personal_attributes_finance",
         "meta_health_appearance_results",
+        "meta_health_wellness_age_targeting_review",
+        "meta_financial_services_authorization_review",
+        "meta_special_ad_category_review",
+        "meta_private_information_request",
         "meta_branded_content_disclosure",
     }
 

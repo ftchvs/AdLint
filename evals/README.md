@@ -6,8 +6,8 @@ platform approval.
 
 ## Datasets
 
-- `datasets/seed_ads.jsonl`: 54-example smoke set.
-- `datasets/rule_benchmark_v1.jsonl`: 200-example deterministic benchmark.
+- `datasets/seed_ads.jsonl`: 58-example smoke set.
+- `datasets/rule_benchmark_v1.jsonl`: 209-example deterministic benchmark.
 - `datasets/real_cases_v1.jsonl`: 75 public-source, paraphrased real-case
   diagnostics balanced across 25 `approved`, 25 `needs_review`, and 25
   `high_risk` expected decisions. These rows come from public marketing pages,
