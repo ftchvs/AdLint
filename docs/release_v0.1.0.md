@@ -23,6 +23,10 @@ locally.
 
 ![AdLint Web UI review](assets/adlint-ui-review.png)
 
+The screenshot intentionally uses risky health/weight-loss copy so the review
+surface shows policy hits, evidence, and rewrite suggestions. Risk scores are
+heuristic decision-support signals, not statistical compliance probabilities.
+
 Example report output is available at:
 
 - `docs/assets/demo/adlint-report.md`

@@ -41,6 +41,10 @@ AdLint currently has three demo-friendly entry points:
 
 ![AdLint Web UI review](docs/assets/adlint-ui-review.png)
 
+The demo intentionally uses risky health/weight-loss copy so the review surface
+shows matched evidence, recommended actions, and safer rewrite suggestions.
+Risk scores are heuristic decision-support signals, not compliance guarantees.
+
 Example generated reports:
 
 - [`docs/assets/demo/adlint-report.md`](docs/assets/demo/adlint-report.md)
