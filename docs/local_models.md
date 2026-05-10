@@ -99,6 +99,20 @@ eval process because local inference can be slow on sensitive-context rows.
 Treat model-only and hybrid metrics as measured local-model quality for that
 run, not as legal-compliance or platform approval evidence.
 
+To measure whether model-added notes are actually useful to a human reviewer,
+run:
+
+```bash
+make model-benchmark
+make model-usefulness
+```
+
+`model-usefulness` labels model-added findings against
+`evals/datasets/model_review_usefulness_v1.jsonl` and reports useful-note
+precision, false-review burden, generic-review burden, and invalid-response
+rate. This is the current signal/noise loop for deciding whether a local model
+is ready for score impact.
+
 ## Current Model Recommendation
 
 Keep deterministic rules as the production baseline. The recommended local

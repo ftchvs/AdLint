@@ -4,7 +4,7 @@ BIN := $(VENV)/bin
 STAMP := $(VENV)/.installed
 MODEL_EVAL_FLAGS ?= --ollama-model gpt-oss-safeguard:20b
 
-.PHONY: api dev scan eval benchmark benchmark-data policy-coverage policy-coverage-validate rewrite-quality model-benchmark model-smoke pr-preflight real-cases real-cases-ci real-cases-hybrid real-cases-model-quality real-cases-validate real-world-blind-candidates real-world-blind-ci real-world-blind-validate real-world-blind real-world-blind-model-quality research-summary test install
+.PHONY: api dev scan eval benchmark benchmark-data policy-coverage policy-coverage-validate rewrite-quality model-benchmark model-smoke model-usefulness pr-preflight real-cases real-cases-ci real-cases-hybrid real-cases-model-quality real-cases-validate real-world-blind-candidates real-world-blind-ci real-world-blind-validate real-world-blind real-world-blind-model-quality research-summary test install
 
 install: $(STAMP)
 
@@ -48,6 +48,9 @@ rewrite-quality: $(STAMP)
 
 model-benchmark: $(STAMP)
 	$(BIN)/python evals/run_eval.py evals/datasets/rule_benchmark_v1.jsonl --mode all --output evals/results/model_comparison.json --markdown-output evals/results/model_comparison.md
+
+model-usefulness: $(STAMP)
+	$(BIN)/python evals/model_review_usefulness.py evals/results/model_comparison.json --output evals/results/model_review_usefulness.json --markdown-output evals/results/model_review_usefulness.md
 
 model-smoke: $(STAMP)
 	$(BIN)/python evals/run_eval.py evals/datasets/seed_ads.jsonl --mode all --limit 3 --require-model --min-decision-accuracy 0 --output evals/results/model_smoke.json --markdown-output evals/results/model_smoke.md
