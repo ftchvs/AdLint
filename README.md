@@ -63,9 +63,10 @@ make api  # then open http://127.0.0.1:8000/ui/
 - FastAPI app with `GET /health`, `GET /models`, `POST /analyze`, and
   `POST /eval`.
 - One-page Web UI at `/ui/` for the main local review workflow, including
-  model selection and opt-in Local model review controls.
+  model selection and opt-in Local model review controls with timeout recovery.
 - YAML policy files under `adlint/policies/`, plus custom policy paths.
-- Deterministic rule engine with policy-module, platform, and industry filters.
+- Deterministic rule engine with policy-module, platform, and industry filters,
+  including `platform: "all"` for broad cross-platform preflight checks.
 - Transparent score thresholds for `approved`, `needs_review`, and `high_risk`.
 - Optional `scoring.yml` threshold and weight overrides for team calibration.
 - JSON stdout, Markdown stdout, and paired JSON/Markdown report files.
@@ -177,8 +178,14 @@ Example config:
 ```
 
 Optional input fields include `target_age_range`, `landing_page_url`,
-`model_enabled`, `ollama_model`, `logging_enabled`, `log_path`,
-`storage_enabled`, and `storage_path`.
+`model_enabled`, `model_affects_score`, `ollama_model`, `logging_enabled`,
+`log_path`, `storage_enabled`, and `storage_path`.
+
+Use `platform: "all"` when you want one broad preflight pass across the
+platform-scoped policy modules AdLint currently ships. This is useful for early
+creative review before a channel is final, but it is not a platform-parity
+claim; use a specific platform value such as `google`, `meta`, `tiktok`, or
+`linkedin` when checking channel-specific launch risk.
 
 ## Scoring configuration
 
@@ -246,7 +253,9 @@ Endpoints:
   `input` object and optional `expected_decision`.
 
 The Web UI starts in rule-only mode. Users can opt into Local model review, and
-separately opt into score impact. API callers can omit `model_enabled` or set
+separately opt into score impact. The model selector is populated from local
+Ollama tags when available, filters obvious embedding-only models, and falls
+back to known review-model options. API callers can omit `model_enabled` or set
 it to `false` for a rule-only run, set `model_enabled: true` for metadata-only
 model notes, or set `model_affects_score: true` when valid model findings
 should join `policy_hits` and affect the final score. `ollama_model` overrides
@@ -337,13 +346,17 @@ make eval
 The seed dataset has 58 examples across health, wellness, finance, SaaS,
 creator disclosure, privacy, landing-page mismatch, brand-safety, and Meta
 platform-policy cases. It is a development sanity check, not a production
-benchmark.
+benchmark. The current PR #16-era local validation baseline is 1.000 decision
+accuracy with no policy/category false-positive or false-negative notes.
 
 Run the larger deterministic benchmark:
 
 ```bash
 make benchmark
 ```
+
+The synthetic policy regression benchmark currently has 213 examples and is
+intended to catch deterministic rule regressions before release work.
 
 Refresh or validate the policy coverage matrix:
 
@@ -467,10 +480,18 @@ ADLINT_OLLAMA_MODEL=gpt-oss-safeguard:20b \
 
 The default Ollama endpoint is `http://localhost:11434/api/chat`. Set
 `ADLINT_OLLAMA_URL` to point AdLint at a different Ollama-compatible chat
-endpoint.
+endpoint. `ADLINT_OLLAMA_TIMEOUT` bounds generation time, and
+`ADLINT_OLLAMA_NUM_PREDICT` can cap model output length for slower local
+models or eval runs.
 
-If the model endpoint is unavailable, AdLint still returns rule-based findings
-and marks the model status as `unavailable`.
+AdLint sends deterministic local classifier calls with JSON formatting,
+`temperature: 0`, and `think: false` where supported, so reasoning chatter is
+less likely to break the strict response schema. Fenced or wrapped JSON is
+accepted when the enclosed object validates.
+
+If the model endpoint is unavailable or a browser request times out, AdLint
+still returns rule-based findings when possible and marks the model status as
+`unavailable`.
 
 Invalid model JSON or schema violations are marked `invalid_response` and are
 ignored for scoring. Landing-page excerpts are treated as untrusted evidence in
