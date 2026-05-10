@@ -153,3 +153,7 @@ def test_geist_style_system_font_and_restrained_surfaces_are_preserved() -> None
     assert "line-height: 0.98;" in STYLES_CSS
     assert ".primary-button," in STYLES_CSS
     assert "border-radius: 5px;" in STYLES_CSS
+
+
+def test_platform_select_includes_meta_ads() -> None:
+    assert '<option value="meta">Meta</option>' in INDEX_HTML

@@ -1,0 +1,118 @@
+{
+  "decision": "high_risk",
+  "enabled_modules": [
+    "brand_safety",
+    "health_claims",
+    "platform",
+    "privacy"
+  ],
+  "landing_page": {
+    "disclaimers": [],
+    "fetch_error": null,
+    "forms": [],
+    "headings": [],
+    "pricing_text": [],
+    "title": null,
+    "tracking_scripts": [],
+    "url": null,
+    "visible_claims": []
+  },
+  "logging_enabled": false,
+  "model": {
+    "enabled": false,
+    "provider": null,
+    "status": "disabled"
+  },
+  "policy_hits": [
+    {
+      "category": "health_claims",
+      "description": "Health or wellness claim likely requiring substantiation.",
+      "evidence": [
+        {
+          "source": "body",
+          "text": "Our clinically proven supplement helps you lose 20 pounds and melts fat."
+        }
+      ],
+      "policy_id": "unsupported_health_claim",
+      "recommended_action": "Remove or qualify the claim and provide substantiation.",
+      "severity": "high"
+    },
+    {
+      "category": "health_claims",
+      "description": "Weight-loss and body-image claims can trigger platform and FTC review.",
+      "evidence": [
+        {
+          "source": "body",
+          "text": "Our clinically proven supplement helps you lose 20 pounds and melts fat."
+        }
+      ],
+      "policy_id": "weight_loss_claim",
+      "recommended_action": "Avoid absolute body or fat-loss language and route for review.",
+      "severity": "high"
+    },
+    {
+      "category": "health_claims",
+      "description": "Before-and-after framing can imply atypical guaranteed results.",
+      "evidence": [
+        {
+          "source": "headline",
+          "text": "Are you overweight? See a before and after transformation"
+        }
+      ],
+      "policy_id": "before_after_claim",
+      "recommended_action": "Add context, substantiation, and typical-results disclosure.",
+      "severity": "medium"
+    },
+    {
+      "category": "platform_policy",
+      "description": "Meta ads should not imply knowledge of a viewer's health, body, or medical condition.",
+      "evidence": [
+        {
+          "source": "headline",
+          "text": "Are you overweight? See a before and after transformation"
+        }
+      ],
+      "policy_id": "meta_personal_attributes_health",
+      "recommended_action": "Reframe the ad around the product or service benefit without implying personal health attributes.",
+      "severity": "high"
+    },
+    {
+      "category": "platform_policy",
+      "description": "Meta health and appearance ads can be rejected for unrealistic results or negative self-perception framing.",
+      "evidence": [
+        {
+          "source": "headline",
+          "text": "Are you overweight? See a before and after transformation"
+        },
+        {
+          "source": "body",
+          "text": "Our clinically proven supplement helps you lose 20 pounds and melts fat."
+        }
+      ],
+      "policy_id": "meta_health_appearance_results",
+      "recommended_action": "Avoid transformation framing and use qualified wellness-support language.",
+      "severity": "high"
+    }
+  ],
+  "recommended_actions": [
+    "Remove or qualify the claim and provide substantiation.",
+    "Avoid absolute body or fat-loss language and route for review.",
+    "Reframe the ad around the product or service benefit without implying personal health attributes.",
+    "Avoid transformation framing and use qualified wellness-support language.",
+    "Add context, substantiation, and typical-results disclosure."
+  ],
+  "requires_review": true,
+  "risk_score": 0.9,
+  "safer_rewrites": [
+    {
+      "body": "Our developed with evidence-informed guidance supplement helps you lose 20 pounds and melts fat. Results vary.",
+      "cta": "Learn more",
+      "headline": "Are you overweight? See a before and after transformation"
+    },
+    {
+      "body": "Designed to complement healthy habits. Individual results vary.",
+      "cta": "Learn more",
+      "headline": "Support your wellness routine with daily nutrition"
+    }
+  ]
+}
