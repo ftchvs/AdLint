@@ -1,4 +1,4 @@
-# AdLint
+# 🛡️ AdLint
 
 **Local-first preflight risk checks for ads, landing pages, and growth
 campaigns before launch.**
