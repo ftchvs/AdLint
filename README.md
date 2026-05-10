@@ -39,10 +39,17 @@ AdLint currently has three demo-friendly entry points:
 2. **Local Web UI** — paste copy, configure platform/industry/model settings, review findings, and export reports.
 3. **FastAPI** — embed `/analyze` into internal tools or CI workflows.
 
-Suggested screenshot/GIF flow for the public repo:
+![AdLint Web UI review](docs/assets/adlint-ui-review.png)
+
+Example generated reports:
+
+- [`docs/assets/demo/adlint-report.md`](docs/assets/demo/adlint-report.md)
+- [`docs/assets/demo/adlint-report.json`](docs/assets/demo/adlint-report.json)
+
+Reproduce the CLI demo:
 
 ```bash
-adlint scan examples/high_risk_tiktok_health.json --format markdown
+adlint scan examples/meta_high_risk_health.json --format markdown --output-dir docs/assets/demo
 make api  # then open http://127.0.0.1:8000/ui/
 ```
 
@@ -106,7 +113,7 @@ make dev   # install and run the high-risk example, writing reports/
 make scan  # install and run the wellness example
 make api   # start uvicorn with adlint.api:app
 make eval  # run the seed evals and write evals/results/latest.json
-make benchmark    # run the 209-row synthetic policy regression benchmark
+make benchmark    # run the 213-row synthetic policy regression benchmark
 make policy-coverage           # refresh docs/policy_coverage_matrix.md
 make policy-coverage-validate  # check the committed coverage matrix
 make rewrite-quality # run the deterministic rewrite-quality rubric eval
@@ -473,6 +480,8 @@ High-value contribution areas:
 ## Related docs
 
 - `docs/open_source_goal.md`
+- `docs/release_v0.1.0.md`
+- `docs/announcement_draft.md`
 - `docs/policy_design.md`
 - `docs/meta_ads_scope.md`
 - `docs/legal_disclaimer.md`
