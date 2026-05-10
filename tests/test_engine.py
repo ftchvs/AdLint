@@ -9,6 +9,71 @@ def policy_ids(result) -> set[str]:
     return {hit.policy_id for hit in result.policy_hits}
 
 
+
+def test_meta_financial_education_copy_avoids_authorization_overtrigger() -> None:
+    result = analyze(
+        {
+            "platform": "meta",
+            "industry": "finance",
+            "headline": "Loan planning education webinar",
+            "body": "Learn budgeting basics and how loan terms work. No application or quote is offered.",
+            "cta": "Register",
+        }
+    )
+
+    assert "meta_financial_services_authorization_review" not in policy_ids(result)
+    assert "meta_special_ad_category_review" not in policy_ids(result)
+
+
+def test_meta_landing_page_mismatch_stacks_with_platform_review() -> None:
+    result = analyze(
+        {
+            "platform": "meta",
+            "industry": "finance",
+            "headline": "Credit card application discount",
+            "body": "Compare an apply for credit offer before launch.",
+            "cta": "Apply",
+            "landing_page_html": "<html><body><h1>General budgeting newsletter</h1><p>Weekly savings tips.</p></body></html>",
+        }
+    )
+
+    ids = policy_ids(result)
+    assert "meta_financial_services_authorization_review" in ids
+    assert "landing_page_offer_mismatch" in ids
+    assert result.decision == "needs_review"
+
+
+
+
+def test_meta_special_ad_category_review_applies_outside_default_verticals() -> None:
+    result = analyze(
+        {
+            "platform": "meta",
+            "industry": "health",
+            "headline": "Hiring now for clinic coordinators",
+            "body": "Apply for this role supporting patient scheduling teams.",
+            "cta": "Apply",
+        }
+    )
+
+    assert "meta_special_ad_category_review" in policy_ids(result)
+
+
+def test_meta_private_information_request_applies_to_general_campaigns() -> None:
+    result = analyze(
+        {
+            "platform": "meta",
+            "industry": "general",
+            "headline": "Check eligibility in minutes",
+            "body": "Enter your credit score to personalize your results.",
+            "cta": "Start",
+        }
+    )
+
+    assert result.decision == "high_risk"
+    assert "meta_private_information_request" in policy_ids(result)
+
+
 def test_high_risk_health_claims_and_tiktok_policy() -> None:
     result = analyze(
         {

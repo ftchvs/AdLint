@@ -1,0 +1,9 @@
+{
+  "platform": "meta",
+  "country": "US",
+  "industry": "finance",
+  "headline": "Compare credit card options",
+  "body": "Review eligibility, terms, disclosures, and 18+ targeting before you apply for credit.",
+  "cta": "Learn more",
+  "policy_modules": ["platform", "privacy"]
+}

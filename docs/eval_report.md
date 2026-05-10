@@ -4,8 +4,8 @@ Status: deterministic rule benchmark v1.
 
 AdLint includes four labeled JSONL datasets:
 
-- `evals/datasets/seed_ads.jsonl`: the 54-example smoke set.
-- `evals/datasets/rule_benchmark_v1.jsonl`: a 200-example benchmark generated
+- `evals/datasets/seed_ads.jsonl`: the 58-example smoke set.
+- `evals/datasets/rule_benchmark_v1.jsonl`: a 209-example benchmark generated
   from the seed set plus policy-author authored synthetic variants.
 - `evals/datasets/real_cases_v1.jsonl`: a 75-example public-source diagnostic
   set balanced across 25 approved, 25 needs-review, and 25 high-risk expected
@@ -29,7 +29,7 @@ Rebuild the committed benchmark dataset:
 make benchmark-data
 ```
 
-Run the 200-example benchmark and write JSON plus Markdown reports:
+Run the 209-example benchmark and write JSON plus Markdown reports:
 
 ```bash
 make benchmark
@@ -201,8 +201,8 @@ Current category-level precision and recall:
 
 Interpretation: the 1.000 score is strong evidence that the deterministic
 rules and current benchmark labels are internally consistent. It is not a
-claim that future ads will pass review with 100% accuracy. If the 200 examples
-were a representative random sample, 200/200 correct decisions would imply an
+claim that future ads will pass review with 100% accuracy. If the 209 examples
+were a representative random sample, 209/209 correct decisions would imply an
 approximate 95% Wilson lower bound of 0.981, but this benchmark is authored
 regression coverage rather than a random production sample.
 

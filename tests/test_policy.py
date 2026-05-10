@@ -74,11 +74,15 @@ def test_filter_policies_applies_platform_and_industry_filters(tmp_path) -> None
     assert filter_policies(policies, wrong_industry) == []
 
 
-def test_bundled_meta_ads_policy_module_is_narrow_and_platform_scoped() -> None:
+def test_bundled_meta_ads_policy_module_is_platform_scoped() -> None:
     meta_policy_ids = {
         "meta_personal_attributes_health",
         "meta_personal_attributes_finance",
         "meta_health_appearance_results",
+        "meta_health_wellness_age_targeting_review",
+        "meta_financial_services_authorization_review",
+        "meta_special_ad_category_review",
+        "meta_private_information_request",
         "meta_branded_content_disclosure",
     }
 
@@ -91,3 +95,10 @@ def test_bundled_meta_ads_policy_module_is_narrow_and_platform_scoped() -> None:
         assert policy.modules == ("platform",)
         assert policy.platforms == ("meta",)
         assert policy.signals
+
+
+def test_meta_cross_vertical_rules_are_not_industry_gated() -> None:
+    policies = {policy.id: policy for policy in load_policies()}
+
+    assert policies["meta_special_ad_category_review"].industries == ()
+    assert policies["meta_private_information_request"].industries == ()

@@ -27,11 +27,24 @@ EXAMPLE_EXPECTATIONS = {
             "meta_health_appearance_results",
             "unsupported_health_claim",
             "weight_loss_claim",
+            "before_after_claim",
         },
     ),
     "meta_needs_review_creator.json": (
         "needs_review",
         {"meta_branded_content_disclosure", "missing_affiliate_or_sponsor_disclosure"},
+    ),
+    "meta_financial_services_review.json": (
+        "needs_review",
+        {"meta_financial_services_authorization_review"},
+    ),
+    "meta_private_health_info_high_risk.json": (
+        "high_risk",
+        {"meta_private_information_request"},
+    ),
+    "meta_special_ad_category_review.json": (
+        "needs_review",
+        {"meta_financial_services_authorization_review", "meta_special_ad_category_review"},
     ),
     "needs_review_google_wellness.json": (
         "needs_review",
@@ -58,3 +71,15 @@ def test_all_documented_json_examples_have_expectations() -> None:
     example_names = {path.name for path in Path("examples").glob("*.json")}
 
     assert example_names == set(EXAMPLE_EXPECTATIONS)
+
+
+def test_meta_examples_do_not_emit_unexpected_policy_ids() -> None:
+    meta_examples = [path for path in Path("examples").glob("meta_*.json")]
+
+    assert meta_examples
+    for example_path in meta_examples:
+        _, expected_policy_ids = EXAMPLE_EXPECTATIONS[example_path.name]
+        result = analyze(load_config(example_path))
+        actual_policy_ids = {hit.policy_id for hit in result.policy_hits}
+
+        assert actual_policy_ids == expected_policy_ids, example_path.name

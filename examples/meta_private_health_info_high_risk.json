@@ -1,0 +1,9 @@
+{
+  "platform": "meta",
+  "country": "US",
+  "industry": "health",
+  "headline": "Tell us your symptoms before booking",
+  "body": "Submit your medical history and upload your diagnosis to find a provider match.",
+  "cta": "Start intake",
+  "policy_modules": ["platform", "privacy", "health_claims"]
+}

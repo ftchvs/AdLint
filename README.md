@@ -106,7 +106,7 @@ make dev   # install and run the high-risk example, writing reports/
 make scan  # install and run the wellness example
 make api   # start uvicorn with adlint.api:app
 make eval  # run the seed evals and write evals/results/latest.json
-make benchmark    # run the 200-row synthetic policy regression benchmark
+make benchmark    # run the 209-row synthetic policy regression benchmark
 make policy-coverage           # refresh docs/policy_coverage_matrix.md
 make policy-coverage-validate  # check the committed coverage matrix
 make rewrite-quality # run the deterministic rewrite-quality rubric eval
@@ -318,7 +318,7 @@ Run the seed evals:
 make eval
 ```
 
-The seed dataset has 54 examples across health, wellness, finance, SaaS,
+The seed dataset has 58 examples across health, wellness, finance, SaaS,
 creator disclosure, privacy, landing-page mismatch, brand-safety, and Meta
 platform-policy cases. It is a development sanity check, not a production
 benchmark.
@@ -464,7 +464,7 @@ platform-specific examples, documentation, and tests for edge cases. Start with
 
 High-value contribution areas:
 
-- Meta Ads policy coverage.
+- Deeper Meta Ads parity, including additional restricted verticals and placement-specific cases.
 - More public-source/paraphrased eval cases.
 - Landing-page extraction improvements.
 - Safer rewrite-quality evaluation.
@@ -472,7 +472,9 @@ High-value contribution areas:
 
 ## Related docs
 
+- `docs/open_source_goal.md`
 - `docs/policy_design.md`
+- `docs/meta_ads_scope.md`
 - `docs/legal_disclaimer.md`
 - `docs/local_models.md`
 - `docs/eval_report.md`
