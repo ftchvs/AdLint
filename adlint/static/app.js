@@ -13,9 +13,18 @@ const exportMarkdownButton = document.querySelector("#export-markdown");
 const modelEnabledInput = document.querySelector("#model_enabled");
 const modelAffectsScoreInput = document.querySelector("#model_affects_score");
 const ollamaModelInput = document.querySelector("#ollama_model");
-const ollamaModelOptions = document.querySelector("#ollama-model-options");
 
 const DEFAULT_OLLAMA_MODEL = "gpt-oss-safeguard:20b";
+const FALLBACK_OLLAMA_MODELS = [
+  DEFAULT_OLLAMA_MODEL,
+  "gpt-oss:20b",
+  "qwen3-coder:30b",
+  "qwen3.5:35b-a3b",
+  "gemma4:26b",
+];
+const RULE_ONLY_TIMEOUT_MS = 30000;
+const LOCAL_MODEL_TIMEOUT_MS = 210000;
+const EMBEDDING_MODEL_MARKERS = ["embed", "bge-"];
 const MODEL_STATUSES = ["disabled", "unavailable", "invalid_response", "ok"];
 const ANALYSIS_STEPS = [
   ["intake", "Input normalized", "Copy, campaign context, modules, and optional landing inputs are prepared for review."],
@@ -44,11 +53,11 @@ form.addEventListener("submit", async (event) => {
   setSubmitting(true);
 
   try {
-    const response = await fetch("/analyze", {
+    const response = await fetchWithTimeout("/analyze", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
-    });
+    }, requestTimeoutMs(payload));
 
     if (!response.ok) {
       const detail = await response.text();
@@ -75,6 +84,26 @@ form.addEventListener("submit", async (event) => {
     setSubmitting(false);
   }
 });
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      const seconds = Math.round(timeoutMs / 1000);
+      throw new Error(`Review timed out after ${seconds}s. Try a smaller local model or run again after the model has warmed up.`);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+function requestTimeoutMs(payload) {
+  return payload.model_enabled ? LOCAL_MODEL_TIMEOUT_MS : RULE_ONLY_TIMEOUT_MS;
+}
 
 form.addEventListener(
   "invalid",
@@ -137,19 +166,19 @@ async function discoverModels() {
     const payload = await response.json();
     const models = normalizeModelList(payload);
     const defaultModel = modelName(payload?.default_model) || DEFAULT_OLLAMA_MODEL;
-    populateModelOptions(models.length > 0 ? [defaultModel, ...models] : [defaultModel]);
+    populateModelOptions([defaultModel, ...models, ...FALLBACK_OLLAMA_MODELS]);
     if (!ollamaModelInput.value.trim() || ollamaModelInput.value === DEFAULT_OLLAMA_MODEL) {
       ollamaModelInput.value = defaultModel;
     }
   } catch {
-    populateModelOptions([DEFAULT_OLLAMA_MODEL]);
+    populateModelOptions(FALLBACK_OLLAMA_MODELS);
     if (!ollamaModelInput.value.trim()) ollamaModelInput.value = DEFAULT_OLLAMA_MODEL;
   }
 }
 
 function normalizeModelList(payload) {
   const source = Array.isArray(payload) ? payload : payload && Array.isArray(payload.models) ? payload.models : [];
-  return [...new Set(source.map(modelName).filter(Boolean))];
+  return [...new Set(source.map(modelName).filter(isReviewModelOption))];
 }
 
 function modelName(item) {
@@ -160,14 +189,31 @@ function modelName(item) {
   return "";
 }
 
+function isReviewModelOption(value) {
+  if (!value) return false;
+  const normalized = value.toLowerCase();
+  return !EMBEDDING_MODEL_MARKERS.some((marker) => normalized.includes(marker));
+}
+
 function populateModelOptions(models) {
   const values = uniqueModelOptions(models);
-  ollamaModelOptions.innerHTML = values.map((model) => `<option value="${escapeHtml(model)}"></option>`).join("");
+  const currentValue = ollamaModelInput.value.trim();
+  ollamaModelInput.innerHTML = values
+    .map((model) => {
+      const safe = escapeHtml(model);
+      return `<option value="${safe}">${safe}</option>`;
+    })
+    .join("");
+  if (currentValue && values.includes(currentValue)) {
+    ollamaModelInput.value = currentValue;
+  } else {
+    ollamaModelInput.value = values.includes(DEFAULT_OLLAMA_MODEL) ? DEFAULT_OLLAMA_MODEL : values[0] || "";
+  }
 }
 
 function uniqueModelOptions(models) {
   const values = [];
-  for (const model of [...models, DEFAULT_OLLAMA_MODEL]) {
+  for (const model of [...models, ...FALLBACK_OLLAMA_MODELS]) {
     const value = modelName(model);
     if (value && !values.includes(value)) values.push(value);
   }

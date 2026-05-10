@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
-from adlint.models import Evidence, LandingPageSnapshot, Policy, PolicyHit, Submission
+from adlint.models import ALL_PLATFORMS, Evidence, LandingPageSnapshot, Policy, PolicyHit, Submission
 
 
 MAX_EVIDENCE_PER_POLICY = 5
@@ -151,7 +151,7 @@ def _derived_linkedin_professional_claim_hits(
     policies: list[Policy],
     existing_hits: list[PolicyHit],
 ) -> list[PolicyHit]:
-    if submission.platform != "linkedin":
+    if submission.platform not in {"linkedin", ALL_PLATFORMS}:
         return []
     if any(hit.policy_id == "linkedin_professional_claim_review" for hit in existing_hits):
         return []

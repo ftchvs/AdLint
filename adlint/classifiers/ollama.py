@@ -148,6 +148,7 @@ def _generation_payload(endpoint: str, model: str, prompt: str) -> dict[str, Any
         "model": model,
         "stream": False,
         "format": "json",
+        "think": False,
         "options": options,
     }
     if urllib.parse.urlparse(endpoint).path.endswith("/api/generate"):
@@ -280,6 +281,7 @@ def _clip(value: str, *, max_chars: int) -> str:
 
 
 def _parse_model_response(response_text: str) -> tuple[dict[str, Any], bool, str | None]:
+    response_text = _json_response_candidate(response_text)
     try:
         parsed = json.loads(response_text)
     except json.JSONDecodeError:
@@ -297,6 +299,21 @@ def _parse_model_response(response_text: str) -> tuple[dict[str, Any], bool, str
     if recommended_action is not None and not isinstance(recommended_action, str):
         return parsed, False, "recommended_action must be a string"
     return parsed, True, None
+
+
+def _json_response_candidate(response_text: str) -> str:
+    text = response_text.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and start < end:
+        return text[start : end + 1]
+    return text
 
 
 def _is_string_list(value: Any) -> bool:

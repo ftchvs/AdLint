@@ -98,6 +98,7 @@ def test_classify_with_ollama_sends_deterministic_chat_payload(monkeypatch) -> N
     assert seen["payload"]["model"] == "llama3.2:latest"
     assert seen["payload"]["stream"] is False
     assert seen["payload"]["format"] == "json"
+    assert seen["payload"]["think"] is False
     assert seen["payload"]["options"] == {"temperature": 0}
     assert seen["payload"]["messages"][0]["role"] == "user"
 
@@ -216,6 +217,35 @@ def test_classify_with_ollama_reports_invalid_response_status(monkeypatch) -> No
     assert info["raw_decision"] is None
     assert info["ignored"] is True
     assert "valid JSON" in info["validation_error"]
+
+
+def test_classify_with_ollama_accepts_fenced_json_response(monkeypatch) -> None:
+    def fake_urlopen(request, timeout):
+        return FakeResponse(
+            {
+                "message": {
+                    "content": """```json
+{
+  "decision": "needs_review",
+  "categories": ["platform"],
+  "evidence": ["review claim"],
+  "recommended_action": "Route for platform review."
+}
+```"""
+                }
+            }
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    hits, info = classify_with_ollama(
+        Submission(platform="google", country="US", industry="general"),
+        endpoint="http://localhost:11434/api/chat",
+    )
+
+    assert info["status"] == "ok"
+    assert info["raw_decision"] == "needs_review"
+    assert [hit.policy_id for hit in hits] == ["model_policy_review"]
 
 
 def test_classify_with_ollama_rejects_unknown_decision_without_hits(monkeypatch) -> None:

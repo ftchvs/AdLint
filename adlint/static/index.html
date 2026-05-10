@@ -49,7 +49,8 @@
             <label>
               Platform
               <select id="platform" name="platform">
-                <option value="google">Google</option>
+                <option value="all">All</option>
+                <option value="google" selected>Google</option>
                 <option value="tiktok">TikTok</option>
                 <option value="linkedin">LinkedIn</option>
                 <option value="meta">Meta</option>
@@ -81,18 +82,17 @@
             </label>
             <label>
               Model
-              <input
+              <select
                 id="ollama_model"
                 name="ollama_model"
-                list="ollama-model-options"
-                autocomplete="off"
-                value="gpt-oss-safeguard:20b"
-                placeholder="gpt-oss-safeguard:20b"
-              />
+              >
+                <option value="gpt-oss-safeguard:20b" selected>gpt-oss-safeguard:20b</option>
+                <option value="gpt-oss:20b">gpt-oss:20b</option>
+                <option value="qwen3-coder:30b">qwen3-coder:30b</option>
+                <option value="qwen3.5:35b-a3b">qwen3.5:35b-a3b</option>
+                <option value="gemma4:26b">gemma4:26b</option>
+              </select>
             </label>
-            <datalist id="ollama-model-options">
-              <option value="gpt-oss-safeguard:20b"></option>
-            </datalist>
           </fieldset>
 
           <fieldset>

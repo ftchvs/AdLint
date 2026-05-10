@@ -74,6 +74,22 @@ def test_filter_policies_applies_platform_and_industry_filters(tmp_path) -> None
     assert filter_policies(policies, wrong_industry) == []
 
 
+def test_filter_policies_all_platform_includes_platform_scoped_policies(tmp_path) -> None:
+    policy_path = tmp_path / "custom.yml"
+    policy_path.write_text(CUSTOM_POLICY, encoding="utf-8")
+    policies = load_policies([policy_path])
+    all_platforms = Submission.from_dict(
+        {
+            "platform": "all",
+            "industry": "health",
+            "headline": "Clinical guarantee",
+            "policy_modules": ["health_claims"],
+        }
+    )
+
+    assert [policy.id for policy in filter_policies(policies, all_platforms)] == ["custom_health_claim"]
+
+
 def test_bundled_meta_ads_policy_module_is_platform_scoped() -> None:
     meta_policy_ids = {
         "meta_personal_attributes_health",

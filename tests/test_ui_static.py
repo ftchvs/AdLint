@@ -18,9 +18,11 @@ def test_local_model_controls_are_present_and_default_off() -> None:
     assert 'name="model_affects_score"' in INDEX_HTML
     assert 'id="ollama_model"' in INDEX_HTML
     assert 'name="ollama_model"' in INDEX_HTML
-    assert 'list="ollama-model-options"' in INDEX_HTML
-    assert 'value="gpt-oss-safeguard:20b"' in INDEX_HTML
-    assert 'id="ollama-model-options"' in INDEX_HTML
+    assert '<option value="gpt-oss-safeguard:20b" selected>gpt-oss-safeguard:20b</option>' in INDEX_HTML
+    assert '<option value="gpt-oss:20b">gpt-oss:20b</option>' in INDEX_HTML
+    assert '<option value="qwen3-coder:30b">qwen3-coder:30b</option>' in INDEX_HTML
+    assert '<option value="qwen3.5:35b-a3b">qwen3.5:35b-a3b</option>' in INDEX_HTML
+    assert '<option value="gemma4:26b">gemma4:26b</option>' in INDEX_HTML
 
 
 def test_copy_fields_are_required_so_placeholders_do_not_submit() -> None:
@@ -42,12 +44,16 @@ def test_page_starts_with_glp1_sample_context() -> None:
 
 def test_model_discovery_fetches_models_and_keeps_fallback_option() -> None:
     assert 'const DEFAULT_OLLAMA_MODEL = "gpt-oss-safeguard:20b";' in APP_JS
+    assert "const FALLBACK_OLLAMA_MODELS = [" in APP_JS
     assert 'fetch("/models")' in APP_JS
     assert "normalizeModelList(payload)" in APP_JS
     assert "modelName(payload?.default_model)" in APP_JS
-    assert "populateModelOptions([DEFAULT_OLLAMA_MODEL])" in APP_JS
+    assert "populateModelOptions(FALLBACK_OLLAMA_MODELS)" in APP_JS
+    assert "function isReviewModelOption(value)" in APP_JS
+    assert 'const EMBEDDING_MODEL_MARKERS = ["embed", "bge-"];' in APP_JS
+    assert "EMBEDDING_MODEL_MARKERS.some((marker) => normalized.includes(marker))" in APP_JS
     assert "function uniqueModelOptions(models)" in APP_JS
-    assert "for (const model of [...models, DEFAULT_OLLAMA_MODEL])" in APP_JS
+    assert "for (const model of [...models, ...FALLBACK_OLLAMA_MODELS])" in APP_JS
     assert "if (value && !values.includes(value)) values.push(value)" in APP_JS
 
 
@@ -68,7 +74,18 @@ def test_analyze_payload_includes_model_keys_when_enabled() -> None:
     assert "if (modelEnabled)" in APP_JS
     assert "payload.ollama_model" in APP_JS
     assert "payload.model_affects_score" in APP_JS
-    assert 'fetch("/analyze"' in APP_JS
+    assert 'fetchWithTimeout("/analyze"' in APP_JS
+
+
+def test_analyze_fetch_has_timeout_recovery_for_stuck_model_runs() -> None:
+    assert "const RULE_ONLY_TIMEOUT_MS = 30000;" in APP_JS
+    assert "const LOCAL_MODEL_TIMEOUT_MS = 210000;" in APP_JS
+    assert "fetchWithTimeout(\"/analyze\"" in APP_JS
+    assert "new AbortController()" in APP_JS
+    assert "controller.abort()" in APP_JS
+    assert "requestTimeoutMs(payload)" in APP_JS
+    assert "Review timed out after" in APP_JS
+    assert "Try a smaller local model" in APP_JS
 
 
 def test_results_and_markdown_expose_model_status() -> None:
@@ -163,4 +180,6 @@ def test_geist_style_system_font_and_restrained_surfaces_are_preserved() -> None
 
 
 def test_platform_select_includes_meta_ads() -> None:
+    assert '<option value="all">All</option>' in INDEX_HTML
+    assert '<option value="google" selected>Google</option>' in INDEX_HTML
     assert '<option value="meta">Meta</option>' in INDEX_HTML
