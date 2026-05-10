@@ -19,7 +19,7 @@ dev: $(STAMP)
 	$(BIN)/python -m adlint scan examples/high_risk_tiktok_health.json --output-dir reports
 
 api: $(STAMP)
-	ADLINT_OLLAMA_TIMEOUT=$(ADLINT_OLLAMA_TIMEOUT) ADLINT_OLLAMA_NUM_PREDICT=$(ADLINT_OLLAMA_NUM_PREDICT) $(BIN)/uvicorn adlint.api:app --reload
+	ADLINT_OLLAMA_TIMEOUT=$(ADLINT_OLLAMA_TIMEOUT) ADLINT_OLLAMA_NUM_PREDICT=$(ADLINT_OLLAMA_NUM_PREDICT) $(BIN)/uvicorn adlint.api:app --reload --reload-dir adlint
 
 scan: $(STAMP)
 	$(BIN)/python -m adlint scan examples/needs_review_google_wellness.json
