@@ -501,6 +501,46 @@ def test_model_only_eval_scores_valid_local_model_response(monkeypatch) -> None:
     assert metrics["policy_metrics"]["model_policy_review"]["recall"] == 1.0
 
 
+def test_model_only_eval_passes_extracted_landing_page_snapshot(monkeypatch) -> None:
+    seen = {}
+
+    def fake_classify(submission, *, model=None, endpoint=None, landing_page=None):
+        seen["landing_page"] = landing_page
+        return [], {
+            "enabled": True,
+            "provider": "ollama",
+            "model": model,
+            "endpoint": endpoint,
+            "status": "ok",
+            "raw_decision": "approved",
+        }
+
+    monkeypatch.setattr(run_eval, "classify_with_ollama", fake_classify)
+
+    metrics = run_eval._run_eval(
+        [
+            {
+                "id": "model-landing-context",
+                "input": {
+                    "platform": "google",
+                    "industry": "health",
+                    "headline": "Symptom intake",
+                    "body": "Book a provider visit.",
+                    "cta": "Book",
+                    "landing_page_html": "<html><title>Clinic intake</title><form><label>Symptoms</label></form></html>",
+                },
+                "expected_decision": "approved",
+            }
+        ],
+        mode="model-only",
+        ollama_model="installed-model",
+    )
+
+    assert metrics["total_examples"] == 1
+    assert seen["landing_page"].title == "Clinic intake"
+    assert seen["landing_page"].forms
+
+
 def test_eval_runner_reports_confusion_matrix_notes_and_category_metrics() -> None:
     results = [
         {
