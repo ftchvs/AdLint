@@ -412,7 +412,7 @@ def test_eval_runner_returns_failure_when_accuracy_threshold_is_not_met(tmp_path
 
 
 def test_model_only_eval_skips_when_requested_model_is_unavailable(monkeypatch) -> None:
-    def fake_classify(submission, *, model=None, endpoint=None):
+    def fake_classify(submission, *, model=None, endpoint=None, landing_page=None):
         return [], {
             "enabled": True,
             "provider": "ollama",
@@ -452,7 +452,7 @@ def test_model_only_eval_skips_when_requested_model_is_unavailable(monkeypatch) 
 
 
 def test_model_only_eval_scores_valid_local_model_response(monkeypatch) -> None:
-    def fake_classify(submission, *, model=None, endpoint=None):
+    def fake_classify(submission, *, model=None, endpoint=None, landing_page=None):
         return [
             PolicyHit(
                 policy_id="model_policy_review",

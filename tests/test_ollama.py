@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from adlint.classifiers.ollama import classify_with_ollama, list_local_models
-from adlint.models import Submission
+from adlint.models import LandingPageSnapshot, Submission
 
 
 class FakeResponse:
@@ -163,11 +163,23 @@ def test_classify_with_ollama_prompt_includes_bounded_landing_page_context(monke
         ),
         model="llama3.2:latest",
         endpoint="http://127.0.0.1:11434/api/chat",
+        landing_page=LandingPageSnapshot(
+            url="https://example.test/quiz",
+            title="Symptom quiz",
+            forms=("Symptoms intake",),
+            tracking_scripts=("gtag config",),
+        ),
     )
 
     prompt = seen["payload"]["messages"][0]["content"]
     assert "Landing page URL: https://example.test/quiz" in prompt
     assert "Policy modules: privacy, platform" in prompt
+    assert "<untrusted_ad_copy>" in prompt
+    assert "<untrusted_landing_page_context>" in prompt
+    assert "Trust boundary" in prompt
+    assert "Title: Symptom quiz" in prompt
+    assert "Form: Symptoms intake" in prompt
+    assert "Tracking script: gtag config" in prompt
     assert "gtag" in prompt
     assert "symptoms" in prompt
 
@@ -199,6 +211,41 @@ def test_classify_with_ollama_reports_invalid_response_status(monkeypatch) -> No
         endpoint="http://localhost:11434/api/chat",
     )
 
-    assert [hit.policy_id for hit in hits] == ["model_policy_review"]
+    assert hits == []
     assert info["status"] == "invalid_response"
-    assert info["raw_decision"] == "needs_review"
+    assert info["raw_decision"] is None
+    assert info["ignored"] is True
+    assert "valid JSON" in info["validation_error"]
+
+
+def test_classify_with_ollama_rejects_unknown_decision_without_hits(monkeypatch) -> None:
+    def fake_urlopen(request, timeout):
+        return FakeResponse({"message": {"content": '{"decision": "banana", "evidence": []}'}})
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    hits, info = classify_with_ollama(
+        Submission(platform="google", country="US", industry="general"),
+        endpoint="http://localhost:11434/api/chat",
+    )
+
+    assert hits == []
+    assert info["status"] == "invalid_response"
+    assert info["raw_decision"] == "banana"
+    assert "decision must be" in info["validation_error"]
+
+
+def test_classify_with_ollama_rejects_non_string_evidence_without_hits(monkeypatch) -> None:
+    def fake_urlopen(request, timeout):
+        return FakeResponse({"message": {"content": '{"decision": "needs_review", "evidence": [{"text": "bad"}]}'}})
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    hits, info = classify_with_ollama(
+        Submission(platform="google", country="US", industry="general"),
+        endpoint="http://localhost:11434/api/chat",
+    )
+
+    assert hits == []
+    assert info["status"] == "invalid_response"
+    assert "evidence" in info["validation_error"]

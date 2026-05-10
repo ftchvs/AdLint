@@ -233,7 +233,7 @@ def test_analyze_accepts_ui_payload_shape() -> None:
 
 
 def test_analyze_passes_optional_ollama_model_override(monkeypatch) -> None:
-    def fake_classify(submission, *, model=None, endpoint=None):
+    def fake_classify(submission, *, model=None, endpoint=None, landing_page=None):
         return [], {
             "enabled": True,
             "provider": "ollama",

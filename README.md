@@ -152,8 +152,10 @@ adlint scan <config>
   than once to combine paths.
 - `--scoring-config <path>` loads optional threshold and weight overrides,
   typically from `scoring.yml`.
-- `--enable-model` calls the local Ollama-compatible classifier in addition to
-  deterministic rules.
+- `--enable-model` calls the local Ollama-compatible classifier for
+  metadata-only review notes.
+- `--model-affects-score` lets valid model findings join `policy_hits` and
+  affect scoring. This is off by default.
 - `--ollama-model <name>` overrides `ADLINT_OLLAMA_MODEL`.
 - `--enable-storage` writes metadata-only SQLite scan storage.
 - `--storage-path <path>` sets the SQLite metadata database path and opts into
@@ -243,11 +245,12 @@ Endpoints:
 - `POST /eval` accepts `{"examples": [...]}` where each example can include an
   `input` object and optional `expected_decision`.
 
-The Web UI sends `model_enabled: true` by default unless the user turns off the
-Local model toggle. It also sends `ollama_model` when a specific model is
-selected. API callers can omit `model_enabled` or set it to `false` for a
-rule-only run, or set `ollama_model` to override `ADLINT_OLLAMA_MODEL` for that
-request.
+The Web UI starts in rule-only mode. Users can opt into Local model review, and
+separately opt into score impact. API callers can omit `model_enabled` or set
+it to `false` for a rule-only run, set `model_enabled: true` for metadata-only
+model notes, or set `model_affects_score: true` when valid model findings
+should join `policy_hits` and affect the final score. `ollama_model` overrides
+`ADLINT_OLLAMA_MODEL` for that request.
 
 Minimal request:
 
@@ -276,6 +279,8 @@ Analysis results include:
 - `landing_page`: extracted title, headings, claims, forms, pricing,
   disclaimers, trackers, or fetch errors.
 - `enabled_modules`, `model`, `logging_enabled`, and optional `reports`.
+  The `model` object includes status, schema validation metadata, score-impact
+  mode, and metadata-only `findings` when local model review is enabled.
 
 Report files use fixed names:
 
@@ -448,10 +453,11 @@ and failure-code labels, not dataset inputs or generated rewrites.
 
 ## Local model hook
 
-AdLint uses hybrid analysis when local model review is enabled: deterministic
-rules always run, and the local Ollama-compatible model adds decision-support
-metadata. The Web UI enables this by default; CLI users can pass
-`--enable-model`, and API callers can set `model_enabled: true`.
+AdLint keeps deterministic rules as the trusted baseline. When local model
+review is enabled, the Ollama-compatible model returns structured
+decision-support metadata and metadata-only findings. Those findings do not
+affect the final decision or risk score unless the caller explicitly enables
+score impact with `--model-affects-score` or `model_affects_score: true`.
 
 ```bash
 ollama pull gpt-oss-safeguard:20b
@@ -465,6 +471,10 @@ endpoint.
 
 If the model endpoint is unavailable, AdLint still returns rule-based findings
 and marks the model status as `unavailable`.
+
+Invalid model JSON or schema violations are marked `invalid_response` and are
+ignored for scoring. Landing-page excerpts are treated as untrusted evidence in
+the model prompt, not as instructions.
 
 
 ## Contributing

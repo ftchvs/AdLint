@@ -99,6 +99,12 @@ Compare rule-only, model-only, and hybrid modes:
 make model-benchmark
 ```
 
+In product scans, local model review is metadata-only by default. Eval
+`hybrid` mode intentionally enables model score impact so the report can
+measure best-case and worst-case contribution: decision changes, regressions,
+generic review burden, detailed policy-id additions, and rescued rule false
+negatives.
+
 Run a short required-model smoke check against the configured local model:
 
 ```bash

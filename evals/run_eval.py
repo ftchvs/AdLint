@@ -400,8 +400,11 @@ def _score_row(
 
 
 def _score_analyze(row: dict[str, Any], *, mode: str, ollama_model: str | None) -> dict[str, Any]:
+    input_payload = dict(row["input"])
+    if mode == "hybrid":
+        input_payload["model_affects_score"] = True
     result = analyze(
-        row["input"],
+        input_payload,
         enable_model=True if mode == "hybrid" else False,
         ollama_model=ollama_model,
     )

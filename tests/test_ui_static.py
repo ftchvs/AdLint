@@ -9,11 +9,13 @@ APP_JS = (ROOT / "adlint/static/app.js").read_text()
 STYLES_CSS = (ROOT / "adlint/static/styles.css").read_text()
 
 
-def test_local_model_controls_are_present_and_default_on() -> None:
+def test_local_model_controls_are_present_and_default_off() -> None:
     assert "<legend>Local model</legend>" in INDEX_HTML
     assert 'id="model_enabled"' in INDEX_HTML
     assert 'name="model_enabled"' in INDEX_HTML
-    assert 'type="checkbox" checked' in INDEX_HTML
+    assert 'id="model_enabled" name="model_enabled" type="checkbox" />' in INDEX_HTML
+    assert 'id="model_affects_score"' in INDEX_HTML
+    assert 'name="model_affects_score"' in INDEX_HTML
     assert 'id="ollama_model"' in INDEX_HTML
     assert 'name="ollama_model"' in INDEX_HTML
     assert 'list="ollama-model-options"' in INDEX_HTML
@@ -52,8 +54,10 @@ def test_model_discovery_fetches_models_and_keeps_fallback_option() -> None:
 def test_model_toggle_controls_disabled_state_and_reset_defaults() -> None:
     assert 'modelEnabledInput.addEventListener("change", syncLocalModelState)' in APP_JS
     assert "ollamaModelInput.disabled = !modelEnabledInput.checked" in APP_JS
+    assert "modelAffectsScoreInput.disabled = !modelEnabledInput.checked" in APP_JS
     assert "function restoreLocalModelDefaults()" in APP_JS
-    assert "modelEnabledInput.checked = true" in APP_JS
+    assert "modelEnabledInput.checked = false" in APP_JS
+    assert "modelAffectsScoreInput.checked = false" in APP_JS
     assert "ollamaModelInput.value = DEFAULT_OLLAMA_MODEL" in APP_JS
     assert "restoreLocalModelDefaults();" in APP_JS
 
@@ -63,6 +67,7 @@ def test_analyze_payload_includes_model_keys_when_enabled() -> None:
     assert "model_enabled: modelEnabled" in APP_JS
     assert "if (modelEnabled)" in APP_JS
     assert "payload.ollama_model" in APP_JS
+    assert "payload.model_affects_score" in APP_JS
     assert 'fetch("/analyze"' in APP_JS
 
 
@@ -88,6 +93,7 @@ def test_result_tabs_and_processing_trace_are_present() -> None:
     assert "Processing trace" in APP_JS
     assert "Data flow" in APP_JS
     assert "Hidden model reasoning is not exposed" in APP_JS
+    assert "metadata-only review notes" in APP_JS
     assert "function setResultView(viewName)" in APP_JS
 
 
@@ -121,7 +127,8 @@ def test_clipboard_copy_has_denied_permission_fallback() -> None:
 
 
 def test_loading_copy_mentions_rules_and_local_model() -> None:
-    assert "Running policy rules and the selected local model through the local API." in APP_JS
+    assert "Running policy rules through the local API." in APP_JS
+    assert "The local model is also reviewing metadata for this run." in APP_JS
 
 
 def test_geist_style_layout_uses_focused_app_shell_not_marketing_hero() -> None:

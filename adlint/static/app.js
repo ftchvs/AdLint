@@ -11,6 +11,7 @@ const copyJsonButton = document.querySelector("#copy-json");
 const exportJsonButton = document.querySelector("#export-json");
 const exportMarkdownButton = document.querySelector("#export-markdown");
 const modelEnabledInput = document.querySelector("#model_enabled");
+const modelAffectsScoreInput = document.querySelector("#model_affects_score");
 const ollamaModelInput = document.querySelector("#ollama_model");
 const ollamaModelOptions = document.querySelector("#ollama-model-options");
 
@@ -20,8 +21,8 @@ const ANALYSIS_STEPS = [
   ["intake", "Input normalized", "Copy, campaign context, modules, and optional landing inputs are prepared for review."],
   ["landing", "Landing page parsed", "Inline HTML or a reachable URL is converted into title, claim, form, tracker, and disclaimer signals."],
   ["rules", "Rules scanned", "Policy YAML checks run first so the baseline result does not depend on model availability."],
-  ["model", "Local model reviewed", "When enabled, Ollama returns structured decision-support metadata. Hidden model reasoning is not exposed."],
-  ["merge", "Evidence merged", "Rule and model signals are deduplicated into one review surface."],
+  ["model", "Local model reviewed", "When enabled, Ollama returns structured metadata-only review notes unless score impact is explicitly enabled. Hidden model reasoning is not exposed."],
+  ["merge", "Evidence merged", "Rule signals remain the trusted baseline; model findings are deduplicated into policy hits only when score impact is enabled."],
   ["score", "Risk scored", "Severity, evidence, industry, platform, privacy, and landing context produce the final decision."],
   ["rewrite", "Rewrites prepared", "Rewrite options are generated from triggered policies without changing the submitted ad."],
 ];
@@ -174,14 +175,20 @@ function uniqueModelOptions(models) {
 }
 
 function restoreLocalModelDefaults() {
-  modelEnabledInput.checked = true;
+  modelEnabledInput.checked = false;
+  modelAffectsScoreInput.checked = false;
   ollamaModelInput.value = DEFAULT_OLLAMA_MODEL;
   syncLocalModelState();
 }
 
 function syncLocalModelState() {
   ollamaModelInput.disabled = !modelEnabledInput.checked;
+  modelAffectsScoreInput.disabled = !modelEnabledInput.checked;
   ollamaModelInput.setAttribute("aria-disabled", String(!modelEnabledInput.checked));
+  modelAffectsScoreInput.setAttribute("aria-disabled", String(!modelEnabledInput.checked));
+  if (!modelEnabledInput.checked) {
+    modelAffectsScoreInput.checked = false;
+  }
 }
 
 function buildPayload(formData) {
@@ -198,6 +205,7 @@ function buildPayload(formData) {
 
   if (modelEnabled) {
     payload.ollama_model = stringValue(formData, "ollama_model", DEFAULT_OLLAMA_MODEL) || DEFAULT_OLLAMA_MODEL;
+    payload.model_affects_score = formData.get("model_affects_score") === "on";
   }
 
   const landingHtml = stringValue(formData, "landing_page_html", "");
@@ -224,8 +232,8 @@ function setSubmitting(isSubmitting) {
 
 function setLoadingCopy(payload) {
   loadingCopy.textContent = payload.model_enabled
-    ? "Running policy rules and the selected local model through the local API."
-    : "Running deterministic policy checks through the local API.";
+    ? "Running policy rules through the local API. The local model is also reviewing metadata for this run."
+    : "Running policy rules through the local API.";
 }
 
 function startLoadingTrace(payload) {
@@ -368,7 +376,9 @@ function renderModelStatus(model = {}, runMeta = {}) {
       </div>
       <div class="hit-meta model-card-tags">
         <span class="tag model-status ${escapeHtml(status)}">${escapeHtml(status)}</span>
-        <span class="tag">${model.enabled ? "hybrid" : "rule-only"}</span>
+        <span class="tag">${model.enabled ? "model metadata" : "rule-only"}</span>
+        ${model.enabled ? `<span class="tag">${model.affects_score ? "score-impact on" : "score-impact off"}</span>` : ""}
+        ${model.hit_count !== undefined ? `<span class="tag">${escapeHtml(model.hit_count)} model findings</span>` : ""}
         ${model.endpoint ? `<span class="tag">${escapeHtml(model.endpoint)}</span>` : ""}
       </div>
       ${reason ? `<p class="muted">${escapeHtml(reason)}</p>` : ""}
@@ -419,10 +429,12 @@ function analysisStepsFromResult(result, runMeta = {}) {
 
 function modelTraceDetail(model = {}) {
   if (model.status === "ok") {
-    return "Ollama returned valid JSON metadata. The interface shows status and parsed decision metadata, not hidden model reasoning.";
+    return model.affects_score
+      ? "Ollama returned valid JSON metadata. Score impact was enabled, so model findings can join policy hits."
+      : "Ollama returned valid JSON metadata. Score impact is off, so model findings remain metadata-only review notes.";
   }
   if (model.status === "invalid_response") {
-    return "The local model responded, but AdLint could not parse the response as valid structured JSON.";
+    return "The local model responded, but AdLint rejected the response as invalid structured JSON and ignored it for scoring.";
   }
   if (model.status === "unavailable") {
     return "The local model was requested but unavailable, so rule-based findings still completed.";
