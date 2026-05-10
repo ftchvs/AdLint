@@ -340,7 +340,7 @@ def _meta_rows() -> list[dict[str, Any]]:
         ),
         (
             "Mortgage planning guide",
-            "Explore this credit offer and financial products and services checklist before applying.",
+            "Start a mortgage application with this credit offer and financial products and services checklist before applying.",
             "Download guide",
             ["meta_financial_services_authorization_review", "meta_special_ad_category_review"],
             "finance",

@@ -473,6 +473,7 @@ High-value contribution areas:
 ## Related docs
 
 - `docs/policy_design.md`
+- `docs/meta_ads_scope.md`
 - `docs/legal_disclaimer.md`
 - `docs/local_models.md`
 - `docs/eval_report.md`

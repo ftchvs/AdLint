@@ -165,7 +165,7 @@ Implemented platform modules:
   risk.
 - TikTok Ads: misleading content, weight-management claims, and disclosure risk.
 - LinkedIn Ads: sensitive targeting, discrimination, and professional claims.
-- Meta Ads: personal attributes, health and appearance results, health/wellness
+- Meta Ads: selected personal-attribute heuristics, health and appearance results, health/wellness
   age-targeting review, financial-services authorization, Special Ad Category
   review, private-information requests, and branded-content disclosure.
 

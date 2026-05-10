@@ -1,3 +1,7 @@
+# Initial Meta Ads heuristic coverage for local preflight review.
+# Source notes: see docs/meta_ads_scope.md for official Meta references, reviewed scope,
+# and explicit non-goals. These rules are decision support, not Meta approval guarantees.
+
 policies:
   - id: meta_personal_attributes_health
     severity: high
@@ -82,13 +86,15 @@ policies:
     industries: [finance]
     requires_review: true
     signals:
-      - credit card
-      - loan
-      - insurance
-      - investment opportunity
-      - mortgage
-      - refinance
+      - credit card application
       - apply for credit
+      - apply for a loan
+      - get a loan
+      - loan approval
+      - insurance quote
+      - investment opportunity
+      - mortgage application
+      - refinance today
       - cash advance
     recommended_action: Confirm financial-services authorization, required disclosures, and 18+ targeting before launch.
     rewrite_strategy: add_review_reminder
@@ -104,9 +110,10 @@ policies:
     signals:
       - housing opportunity
       - apartment rental
-      - mortgage
+      - mortgage application
       - job opening
-      - hiring
+      - hiring now
+      - apply for this role
       - employment opportunity
       - financial products and services
       - credit offer
