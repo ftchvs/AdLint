@@ -49,7 +49,7 @@ def filter_policies(policies: Iterable[Policy], submission: Submission) -> list[
     for policy in policies:
         if policy.modules and not enabled_modules.intersection(policy.modules):
             continue
-        if policy.platforms and submission.platform not in policy.platforms:
+        if policy.platforms and submission.platform != "all" and submission.platform not in policy.platforms:
             continue
         if policy.industries and submission.industry not in policy.industries:
             continue

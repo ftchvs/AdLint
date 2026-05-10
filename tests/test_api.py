@@ -201,7 +201,7 @@ def test_ui_assets_are_served() -> None:
 
     assert js_response.status_code == 200
     assert css_response.status_code == 200
-    assert 'fetch("/analyze"' in js_response.text
+    assert 'fetchWithTimeout("/analyze"' in js_response.text
     assert "logging_enabled: true" not in js_response.text
     assert ".result-panel" in css_response.text
 

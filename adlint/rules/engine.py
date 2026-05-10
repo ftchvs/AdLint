@@ -151,7 +151,7 @@ def _derived_linkedin_professional_claim_hits(
     policies: list[Policy],
     existing_hits: list[PolicyHit],
 ) -> list[PolicyHit]:
-    if submission.platform != "linkedin":
+    if submission.platform not in {"linkedin", "all"}:
         return []
     if any(hit.policy_id == "linkedin_professional_claim_review" for hit in existing_hits):
         return []
