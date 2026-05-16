@@ -20,6 +20,10 @@ def test_approved_markdown_report_has_empty_state_and_disclaimer() -> None:
     markdown = to_markdown(result)
 
     assert "No policy hits detected." in markdown
+    assert "## Launch Readiness" in markdown
+    assert "- Status: Ready for configured preflight review." in markdown
+    assert "- Summary: No policy hits were detected by the configured deterministic rules." in markdown
+    assert "  - No priority fixes from the configured rules." in markdown
     assert "- No additional actions." in markdown
     assert "No rewrite suggested." in markdown
     assert "Decision-Support Disclaimer" in markdown
@@ -52,6 +56,9 @@ def test_report_writer_serializes_review_labels_and_landing_page_context(tmp_pat
         "note": "HHS HIPAA online tracking guidance",
         "url": "https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/hipaa-online-tracking/index.html",
     }
+    assert "- Status: Do not launch before fixes." in markdown
+    assert "- Priority fixes:" in markdown
+    assert "  - Remove or qualify the claim and provide substantiation." in markdown
     assert "- Review label: `requires_review`" in markdown
     assert "- Policy source: [HHS HIPAA online tracking guidance](https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/hipaa-online-tracking/index.html)" in markdown
     assert "## Landing Page" in markdown

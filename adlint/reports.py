@@ -15,9 +15,20 @@ def to_markdown(result: AnalysisResult) -> str:
         f"- Requires review: `{str(result.requires_review).lower()}`",
         f"- Model status: `{_model_status(result.model)}`",
         "",
-        "## Policy Hits",
+        "## Launch Readiness",
         "",
+        f"- Status: {_readiness_status(result)}",
+        f"- Summary: {_readiness_summary(result)}",
+        "- Priority fixes:",
     ]
+    lines.extend(_priority_fix_lines(result))
+    lines.extend(
+        [
+            "",
+            "## Policy Hits",
+            "",
+        ]
+    )
 
     if not result.policy_hits:
         lines.append("No policy hits detected.")
@@ -107,6 +118,28 @@ def _model_status(model: dict[str, object]) -> str:
     if selected_model:
         return f"{status} ({selected_model})"
     return status
+
+
+def _readiness_status(result: AnalysisResult) -> str:
+    if result.decision == "high_risk":
+        return "Do not launch before fixes."
+    if result.decision == "needs_review":
+        return "Needs review before launch."
+    return "Ready for configured preflight review."
+
+
+def _readiness_summary(result: AnalysisResult) -> str:
+    if result.decision == "high_risk":
+        return "High-risk policy findings were detected by the configured rules."
+    if result.decision == "needs_review":
+        return "Review-labeled or medium-risk findings need a human check."
+    return "No policy hits were detected by the configured deterministic rules."
+
+
+def _priority_fix_lines(result: AnalysisResult) -> list[str]:
+    if not result.recommended_actions:
+        return ["  - No priority fixes from the configured rules."]
+    return [f"  - {action}" for action in result.recommended_actions[:3]]
 
 
 def _policy_source_markdown(policy_source: dict[str, str]) -> str:
