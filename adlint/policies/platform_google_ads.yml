@@ -3,8 +3,8 @@ policies:
     severity: high
     category: platform_policy
     description: Google Ads can restrict health, medical, and supplement promotions.
-    source_url: https://support.google.com/adspolicy/answer/6008942?hl=en
-    source_note: Google Ads healthcare and restricted-content policy center
+    source_url: https://support.google.com/adspolicy/answer/176031?hl=en
+    source_note: Google Ads healthcare and medicines policy guidance
     modules: [platform]
     platforms: [google]
     industries: [health, wellness]
@@ -25,8 +25,8 @@ policies:
     severity: high
     category: platform_policy
     description: Misleading claims, unavailable offers, and omitted material terms can trigger review.
-    source_url: https://support.google.com/adspolicy/answer/6008942?hl=en
-    source_note: Google Ads misrepresentation and editorial policy guidance
+    source_url: https://support.google.com/adspolicy/answer/6020955?hl=en
+    source_note: Google Ads misrepresentation policy guidance
     modules: [platform]
     platforms: [google]
     signals:
@@ -42,8 +42,8 @@ policies:
     severity: medium
     category: platform_policy
     description: Financial outcome and credit claims need careful qualification.
-    source_url: https://support.google.com/adspolicy/answer/6008942?hl=en
-    source_note: Google Ads financial products and misrepresentation policy guidance
+    source_url: https://support.google.com/adspolicy/answer/2464998?hl=en
+    source_note: Google Ads financial products and services policy guidance
     modules: [platform]
     platforms: [google]
     industries: [finance]

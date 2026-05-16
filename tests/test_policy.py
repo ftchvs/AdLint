@@ -14,6 +14,8 @@ policies:
     industries: [health]
     signals:
       - clinical guarantee
+    source_url: https://example.com/policy
+    source_note: Example policy source
     recommended_action: Qualify the custom claim.
     requires_review: true
 """
@@ -27,6 +29,8 @@ def test_load_policies_accepts_custom_file(tmp_path) -> None:
 
     assert [policy.id for policy in policies] == ["custom_health_claim"]
     assert policies[0].requires_review is True
+    assert policies[0].source_url == "https://example.com/policy"
+    assert policies[0].source_note == "Example policy source"
 
 
 def test_load_policies_preserves_optional_source_metadata(tmp_path) -> None:
@@ -140,3 +144,13 @@ def test_meta_cross_vertical_rules_are_not_industry_gated() -> None:
 
     assert policies["meta_special_ad_category_review"].industries == ()
     assert policies["meta_private_information_request"].industries == ()
+
+
+def test_bundled_policies_include_public_source_metadata() -> None:
+    missing = [
+        policy.id
+        for policy in load_policies()
+        if not policy.source_url or not policy.source_note
+    ]
+
+    assert missing == []

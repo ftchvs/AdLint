@@ -21,8 +21,8 @@ policies:
     severity: medium
     category: landing_page
     description: Landing page content may not match the ad's offer or claim framing.
-    source_url: https://support.google.com/adspolicy/answer/6008942?hl=en
-    source_note: Google Ads destination and editorial policy guidance
+    source_url: https://support.google.com/adspolicy/answer/6368661?hl=en
+    source_note: Google Ads destination requirements guidance
     modules: [landing_page]
     signals:
       - mismatch_detected

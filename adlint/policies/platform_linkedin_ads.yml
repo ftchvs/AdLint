@@ -3,6 +3,8 @@ policies:
     severity: high
     category: platform_policy
     description: Sensitive targeting in employment, housing, credit, or health contexts needs review.
+    source_url: https://www.linkedin.com/help/linkedin/answer/a416948
+    source_note: LinkedIn Ads discrimination and sensitive-targeting guidance
     modules: [platform]
     platforms: [linkedin]
     signals:
@@ -21,6 +23,8 @@ policies:
     severity: high
     category: platform_policy
     description: Employment, housing, and credit ads should avoid exclusionary language.
+    source_url: https://www.linkedin.com/help/linkedin/answer/a416948
+    source_note: LinkedIn Ads discrimination guidance
     modules: [platform]
     platforms: [linkedin]
     industries: [finance, saas, general]
@@ -36,6 +40,8 @@ policies:
     severity: high
     category: platform_policy
     description: Professional performance or income promises should be qualified.
+    source_url: https://www.linkedin.com/legal/ads-policy
+    source_note: LinkedIn Advertising Policies on truthful claims
     modules: [platform]
     platforms: [linkedin]
     industries: [saas, finance, creator, general]

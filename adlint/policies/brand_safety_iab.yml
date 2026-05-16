@@ -3,6 +3,8 @@ policies:
     severity: high
     category: brand_safety
     description: Adult content or sexualized context can be unsuitable for many campaigns.
+    source_url: https://www.iab.com/guidelines/taxonomy
+    source_note: IAB Tech Lab Content Taxonomy brand-safety guidance
     modules: [brand_safety]
     signals: [adult, explicit, sexual, pornography]
     recommended_action: Review adjacency and suitability controls before launch.
@@ -15,6 +17,8 @@ policies:
     severity: high
     category: brand_safety
     description: Violent context can trigger suitability restrictions.
+    source_url: https://www.iab.com/guidelines/taxonomy
+    source_note: IAB Tech Lab Content Taxonomy brand-safety guidance
     modules: [brand_safety]
     signals: [violence, violent, assault, weapon, murder]
     recommended_action: Review inventory exclusions, adjacency, and creative fit.
@@ -27,6 +31,8 @@ policies:
     severity: high
     category: brand_safety
     description: Tragedy or conflict adjacency can create brand-suitability risk.
+    source_url: https://www.iab.com/guidelines/taxonomy
+    source_note: IAB Tech Lab Content Taxonomy brand-safety guidance
     modules: [brand_safety]
     signals: [tragedy, conflict, war, disaster, death]
     recommended_action: Avoid opportunistic framing and review adjacency settings.
@@ -39,6 +45,8 @@ policies:
     severity: medium
     category: brand_safety
     description: Political content can require suitability and platform-policy review.
+    source_url: https://www.iab.com/guidelines/taxonomy
+    source_note: IAB Tech Lab Content Taxonomy brand-safety guidance
     modules: [brand_safety]
     signals: [election, politician, political, campaign finance, ballot]
     recommended_action: Confirm political-content settings and disclosure requirements.
@@ -51,6 +59,8 @@ policies:
     severity: high
     category: brand_safety
     description: Misinformation context can be unsafe for ad adjacency or claims.
+    source_url: https://www.iab.com/guidelines/taxonomy
+    source_note: IAB Tech Lab Content Taxonomy brand-safety guidance
     modules: [brand_safety]
     signals: [hoax, conspiracy, fake news, misinformation, miracle cure]
     recommended_action: Review claim substantiation and block unsafe inventory adjacency.
@@ -63,6 +73,8 @@ policies:
     severity: medium
     category: brand_safety
     description: Sensitive social issues can require review for tone, adjacency, and targeting.
+    source_url: https://www.iab.com/guidelines/taxonomy
+    source_note: IAB Tech Lab Content Taxonomy brand-safety guidance
     modules: [brand_safety]
     signals: [immigration, race, religion, faith leaders, gender identity, social issue]
     recommended_action: Review suitability level, targeting, and creative tone.
@@ -75,6 +87,8 @@ policies:
     severity: medium
     category: brand_safety
     description: Controversial content may require custom brand-safety routing.
+    source_url: https://www.iab.com/guidelines/taxonomy
+    source_note: IAB Tech Lab Content Taxonomy brand-safety guidance
     modules: [brand_safety]
     signals: [controversial, scandal, outrage, boycott]
     recommended_action: Review brand fit and adjacency exclusions.

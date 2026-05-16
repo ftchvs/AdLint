@@ -110,8 +110,8 @@ policies:
     severity: medium
     category: misrepresentation
     description: Artificial urgency or scarcity can create misleading pressure.
-    source_url: https://support.google.com/adspolicy/answer/6008942?hl=en
-    source_note: Google Ads policies on clear, honest ads and destinations
+    source_url: https://support.google.com/adspolicy/answer/6020955?hl=en
+    source_note: Google Ads misrepresentation policy guidance
     modules: [health_claims, platform]
     signals:
       - only * left
