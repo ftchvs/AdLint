@@ -4,6 +4,7 @@ import argparse
 import json
 from typing import Sequence
 
+from adlint.batch import BatchOptions, run_batch, to_summary_csv
 from adlint.config import load_config
 from adlint.engine import analyze
 from adlint.reports import to_markdown
@@ -56,6 +57,43 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="SQLite metadata database path. Passing this also opts into storage.",
     )
 
+    batch_parser = subparsers.add_parser("batch", help="Analyze a CSV of ad configs.")
+    batch_parser.add_argument("csv", help="Path to CSV with ad config columns.")
+    batch_parser.add_argument(
+        "--policy-path",
+        action="append",
+        default=None,
+        help="Policy YAML file or directory. Can be passed multiple times.",
+    )
+    batch_parser.add_argument(
+        "--output-dir",
+        help="Write a local batch archive with summaries and per-row reports.",
+    )
+    batch_parser.add_argument(
+        "--format",
+        choices=("json", "csv"),
+        default="json",
+        help="Summary format printed to stdout.",
+    )
+    batch_parser.add_argument(
+        "--enable-model",
+        action="store_true",
+        help="Call a local Ollama-compatible classifier for metadata-only review notes.",
+    )
+    batch_parser.add_argument(
+        "--model-affects-score",
+        action="store_true",
+        help="Allow valid local-model findings to join policy hits and affect scoring. Off by default.",
+    )
+    batch_parser.add_argument(
+        "--ollama-model",
+        help="Ollama model name, defaulting to ADLINT_OLLAMA_MODEL or gpt-oss-safeguard:20b.",
+    )
+    batch_parser.add_argument(
+        "--scoring-config",
+        help="Path to optional scoring.yml threshold and weight overrides.",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "scan":
@@ -78,6 +116,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(to_markdown(result))
         else:
             print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "batch":
+        result = run_batch(
+            args.csv,
+            BatchOptions(
+                policy_paths=args.policy_path,
+                output_dir=args.output_dir,
+                enable_model=True if args.enable_model else None,
+                model_affects_score=args.model_affects_score,
+                ollama_model=args.ollama_model,
+                scoring_config_path=args.scoring_config,
+            ),
+        )
+        if args.format == "csv":
+            print(to_summary_csv(result), end="")
+        else:
+            print(json.dumps(result, indent=2, sort_keys=True))
         return 0
 
     parser.error(f"Unknown command: {args.command}")
