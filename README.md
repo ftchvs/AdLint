@@ -36,8 +36,9 @@ review, not a black-box replacement for reviewers.
 AdLint currently has three demo-friendly entry points:
 
 1. **CLI** — scan a JSON/YAML campaign config and write JSON/Markdown reports.
-2. **Local Web UI** — paste copy, configure platform/industry/model settings, review findings, and export reports.
-3. **FastAPI** — embed `/analyze` into internal tools or CI workflows.
+2. **Batch CLI** — review a CSV of campaign rows and export a local archive.
+3. **Local Web UI** — paste copy, configure platform/industry/model settings, review findings, and export reports.
+4. **FastAPI** — embed `/analyze` into internal tools or CI workflows.
 
 ![AdLint Web UI review](docs/assets/adlint-ui-review.png)
 
@@ -60,6 +61,8 @@ make api  # then open http://127.0.0.1:8000/ui/
 ## What runs today
 
 - Python package with the `adlint scan` CLI.
+- `adlint batch` for CSV preflight review with local JSON, CSV, and Markdown
+  summary exports.
 - FastAPI app with `GET /health`, `GET /models`, `POST /analyze`, and
   `POST /eval`.
 - One-page Web UI at `/ui/` for the main local review workflow, including
@@ -186,6 +189,30 @@ platform-scoped policy modules AdLint currently ships. This is useful for early
 creative review before a channel is final, but it is not a platform-parity
 claim; use a specific platform value such as `google`, `meta`, `tiktok`, or
 `linkedin` when checking channel-specific launch risk.
+
+### Batch CSV review
+
+Use `adlint batch` when you want to preflight a small campaign set without
+uploading raw creative to a hosted service:
+
+```bash
+adlint batch examples/batch_campaigns.csv --output-dir reports/batch
+```
+
+CSV columns map to the same fields as the scan config, including `platform`,
+`industry`, `headline`, `body`, `cta`, `landing_page_url`,
+`landing_page_html`, and `policy_modules`. Separate multiple policy modules
+with `;`, `,`, or `|`.
+
+With `--output-dir`, AdLint writes:
+
+- `adlint-batch-summary.json`
+- `adlint-batch-summary.csv`
+- `adlint-batch-summary.md`
+- one JSON and one Markdown report per row
+
+The batch summary intentionally omits raw ad copy and landing-page HTML. Per-row
+reports stay local and contain the evidence snippets needed for review.
 
 ## Scoring configuration
 
