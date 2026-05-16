@@ -4,7 +4,7 @@ import argparse
 import json
 from typing import Sequence
 
-from adlint.batch import BatchOptions, run_batch, to_summary_csv
+from adlint.batch import BatchOptions, run_batch, summary_to_markdown, to_summary_csv
 from adlint.config import load_config
 from adlint.engine import analyze
 from adlint.reports import to_markdown
@@ -71,7 +71,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     batch_parser.add_argument(
         "--format",
-        choices=("json", "csv"),
+        choices=("json", "csv", "markdown"),
         default="json",
         help="Summary format printed to stdout.",
     )
@@ -132,6 +132,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         if args.format == "csv":
             print(to_summary_csv(result), end="")
+        elif args.format == "markdown":
+            print(summary_to_markdown(result))
         else:
             print(json.dumps(result, indent=2, sort_keys=True))
         return 0

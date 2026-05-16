@@ -9,15 +9,10 @@ from pathlib import Path
 from typing import Any
 
 from adlint.engine import analyze
-from adlint.models import AnalysisResult
+from adlint.reports import to_markdown
 
 
-BOOL_FIELDS = {
-    "logging_enabled",
-    "model_affects_score",
-    "model_enabled",
-    "storage_enabled",
-}
+BOOLEAN_FIELDS = {"model_enabled", "model_affects_score", "logging_enabled", "storage_enabled"}
 LIST_FIELDS = {"policy_modules", "modules"}
 PRIVATE_BATCH_FIELDS = {
     "body",
@@ -26,18 +21,12 @@ PRIVATE_BATCH_FIELDS = {
     "landing_page_html",
     "landing_page_url",
 }
-SUMMARY_COLUMNS = (
-    "row_id",
-    "row_number",
-    "platform",
-    "industry",
+SUMMARY_FIELDS = (
+    "id",
     "decision",
     "risk_score",
     "requires_review",
-    "highest_severity",
     "policy_ids",
-    "recommended_actions",
-    "model_status",
     "json_report",
     "markdown_report",
 )
@@ -57,168 +46,191 @@ def run_batch(csv_path: str | Path, options: BatchOptions | None = None) -> dict
     resolved_options = options or BatchOptions()
     source_path = Path(csv_path)
     rows = _load_csv_rows(source_path)
-    summaries: list[dict[str, Any]] = []
-    decision_counts: Counter[str] = Counter()
+    output_dir = Path(resolved_options.output_dir) if resolved_options.output_dir else None
+    if output_dir:
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    for row_number, row in enumerate(rows, start=1):
-        config = _row_to_config(row)
+    results: list[dict[str, Any]] = []
+    for index, raw_row in enumerate(rows, start=1):
+        row_id = _row_id(raw_row, index)
+        config = _row_to_config(raw_row)
         if resolved_options.model_affects_score:
             config["model_affects_score"] = True
-        row_id = _row_id(row, row_number)
-        case_output_dir = None
-        if resolved_options.output_dir:
-            case_output_dir = str(Path(resolved_options.output_dir) / "cases" / _safe_path_name(row_id))
 
         result = analyze(
             config,
             policy_paths=resolved_options.policy_paths,
-            output_dir=case_output_dir,
             enable_model=resolved_options.enable_model,
             ollama_model=resolved_options.ollama_model,
             scoring_config_path=resolved_options.scoring_config_path,
         )
-        summary = summarize_result(
-            result,
-            row_id=row_id,
-            row_number=row_number,
-            platform=str(config.get("platform", "google")),
-            industry=str(config.get("industry", "general")),
+        report_paths = _write_row_reports(result, output_dir, row_id) if output_dir else {}
+        policy_ids = [hit.policy_id for hit in result.policy_hits]
+        results.append(
+            {
+                "id": row_id,
+                "decision": result.decision,
+                "risk_score": round(result.risk_score, 4),
+                "requires_review": result.requires_review,
+                "policy_ids": policy_ids,
+                "reports": report_paths,
+            }
         )
-        summaries.append(summary)
-        decision_counts[result.decision] += 1
 
-    payload = {
-        "source": str(source_path),
-        "total_rows": len(summaries),
-        "decision_counts": dict(sorted(decision_counts.items())),
-        "rows": summaries,
-        "privacy": {
-            "raw_creative_included": False,
-            "summary_omits_fields": sorted(PRIVATE_BATCH_FIELDS),
-            "case_reports": "local_output_dir_only" if resolved_options.output_dir else "not_written",
-        },
-    }
-    if resolved_options.output_dir:
-        payload["reports"] = write_batch_reports(payload, resolved_options.output_dir)
-    return payload
+    summary = _batch_summary(results, source_path=source_path, output_dir=output_dir)
+    if output_dir:
+        summary["reports"] = _write_batch_reports(summary, output_dir)
+    return summary
 
 
-def summarize_result(
-    result: AnalysisResult,
-    *,
-    row_id: str,
-    row_number: int,
-    platform: str,
-    industry: str,
-) -> dict[str, Any]:
-    return {
-        "row_id": row_id,
-        "row_number": row_number,
-        "platform": platform,
-        "industry": industry,
-        "decision": result.decision,
-        "risk_score": round(result.risk_score, 3),
-        "requires_review": result.requires_review,
-        "highest_severity": _highest_severity(result),
-        "policy_ids": [hit.policy_id for hit in result.policy_hits],
-        "recommended_actions": result.recommended_actions,
-        "model_status": _model_status(result),
-        "json_report": result.reports.get("json"),
-        "markdown_report": result.reports.get("markdown"),
-    }
+def summary_to_markdown(summary: dict[str, Any]) -> str:
+    lines = [
+        "# AdLint Batch Summary",
+        "",
+        f"- Total rows: `{summary['total_rows']}`",
+        f"- Approved: `{summary['decision_counts'].get('approved', 0)}`",
+        f"- Needs review: `{summary['decision_counts'].get('needs_review', 0)}`",
+        f"- High risk: `{summary['decision_counts'].get('high_risk', 0)}`",
+        "",
+        "## Rows",
+        "",
+        "| ID | Decision | Risk score | Review | Policy hits |",
+        "| --- | --- | ---: | --- | --- |",
+    ]
+    for row in summary["rows"]:
+        policy_ids = ", ".join(row["policy_ids"]) if row["policy_ids"] else "none"
+        lines.append(
+            "| {id} | `{decision}` | {risk_score:.2f} | `{requires_review}` | {policy_ids} |".format(
+                id=row["id"],
+                decision=row["decision"],
+                risk_score=row["risk_score"],
+                requires_review=str(row["requires_review"]).lower(),
+                policy_ids=policy_ids,
+            )
+        )
+    lines.extend(
+        [
+            "",
+            "Batch summaries intentionally omit raw ad copy. Per-row reports contain the evidence snippets needed for local review.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
 
 
-def write_batch_reports(payload: dict[str, Any], output_dir: str | Path) -> dict[str, str]:
-    path = Path(output_dir)
-    path.mkdir(parents=True, exist_ok=True)
-    json_path = path / "adlint-batch-summary.json"
-    csv_path = path / "adlint-batch-summary.csv"
-    json_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    csv_path.write_text(to_summary_csv(payload), encoding="utf-8")
-    return {"json": str(json_path), "csv": str(csv_path)}
-
-
-def to_summary_csv(payload: dict[str, Any]) -> str:
+def to_summary_csv(summary: dict[str, Any]) -> str:
     from io import StringIO
 
     buffer = StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=SUMMARY_COLUMNS, extrasaction="ignore")
+    writer = csv.DictWriter(buffer, fieldnames=SUMMARY_FIELDS)
     writer.writeheader()
-    for row in payload.get("rows", []):
-        writer.writerow(_csv_summary_row(row))
+    for row in summary.get("rows", []):
+        reports = row.get("reports", {})
+        writer.writerow(
+            {
+                "id": row["id"],
+                "decision": row["decision"],
+                "risk_score": f"{row['risk_score']:.4f}",
+                "requires_review": str(row["requires_review"]).lower(),
+                "policy_ids": ";".join(row["policy_ids"]),
+                "json_report": reports.get("json", ""),
+                "markdown_report": reports.get("markdown", ""),
+            }
+        )
     return buffer.getvalue()
 
 
 def _load_csv_rows(path: Path) -> list[dict[str, str]]:
-    if not path.exists():
-        raise FileNotFoundError(f"Batch CSV not found: {path}")
-    with path.open(newline="", encoding="utf-8-sig") as handle:
+    with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         if not reader.fieldnames:
             raise ValueError("Batch CSV must include a header row.")
-        return [{key: value for key, value in row.items() if key} for row in reader]
+        return [dict(row) for row in reader]
 
 
 def _row_to_config(row: dict[str, str]) -> dict[str, Any]:
     config: dict[str, Any] = {}
-    for key, value in row.items():
-        normalized_key = key.strip()
-        if not normalized_key or normalized_key == "id" or value is None:
+    for key, raw_value in row.items():
+        if key is None:
             continue
-        normalized_value = value.strip()
-        if not normalized_value:
+        clean_key = key.strip()
+        if not clean_key or clean_key in {"id", "row_id", "name"}:
             continue
-        if normalized_key in BOOL_FIELDS:
-            config[normalized_key] = _parse_bool(normalized_value)
-        elif normalized_key in LIST_FIELDS:
-            config[normalized_key] = _parse_list(normalized_value)
+        value = (raw_value or "").strip()
+        if value == "":
+            continue
+        if clean_key in BOOLEAN_FIELDS:
+            config[clean_key] = _parse_bool(value)
+        elif clean_key in LIST_FIELDS:
+            config["policy_modules"] = _parse_list(value)
         else:
-            config[normalized_key] = normalized_value
+            config[clean_key] = value
     return config
-
-
-def _row_id(row: dict[str, str], row_number: int) -> str:
-    raw_id = (row.get("id") or row.get("row_id") or "").strip()
-    return raw_id or f"row-{row_number}"
-
-
-def _safe_path_name(value: str) -> str:
-    safe = re.sub(r"[^a-zA-Z0-9._-]+", "-", value.strip()).strip(".-")
-    return safe or "row"
 
 
 def _parse_bool(value: str) -> bool:
     normalized = value.strip().lower()
-    if normalized in {"1", "true", "yes", "y"}:
+    if normalized in {"1", "true", "yes", "y", "on"}:
         return True
-    if normalized in {"0", "false", "no", "n"}:
+    if normalized in {"0", "false", "no", "n", "off"}:
         return False
-    raise ValueError(f"Expected boolean value, got {value!r}")
+    raise ValueError(f"Invalid boolean value in batch CSV: {value}")
 
 
 def _parse_list(value: str) -> list[str]:
-    return [item.strip() for item in re.split(r"[;,]", value) if item.strip()]
+    if value.strip().startswith("["):
+        parsed = json.loads(value)
+        if not isinstance(parsed, list):
+            raise ValueError("CSV list fields must be JSON arrays or delimiter-separated strings.")
+        return [str(item).strip() for item in parsed if str(item).strip()]
+    return [item.strip() for item in re.split(r"[|;,]", value) if item.strip()]
 
 
-def _highest_severity(result: AnalysisResult) -> str | None:
-    order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
-    highest = None
-    highest_score = 0
-    for hit in result.policy_hits:
-        score = order.get(hit.severity, 0)
-        if score > highest_score:
-            highest = hit.severity
-            highest_score = score
-    return highest
+def _row_id(row: dict[str, str], index: int) -> str:
+    for field in ("id", "row_id", "name"):
+        value = (row.get(field) or "").strip()
+        if value:
+            return _safe_id(value)
+    return f"row-{index:03d}"
 
 
-def _model_status(result: AnalysisResult) -> str:
-    return str(result.model.get("status") or "disabled")
+def _safe_id(value: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9._-]+", "-", value.strip()).strip("-._")
+    return cleaned or "row"
 
 
-def _csv_summary_row(row: dict[str, Any]) -> dict[str, Any]:
-    csv_row = dict(row)
-    csv_row["requires_review"] = str(row.get("requires_review", False)).lower()
-    csv_row["policy_ids"] = ";".join(str(item) for item in row.get("policy_ids", []))
-    csv_row["recommended_actions"] = " | ".join(str(item) for item in row.get("recommended_actions", []))
-    return csv_row
+def _write_row_reports(result: Any, output_dir: Path, row_id: str) -> dict[str, str]:
+    json_path = output_dir / f"{row_id}.json"
+    markdown_path = output_dir / f"{row_id}.md"
+    json_path.write_text(json.dumps(result.to_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    markdown_path.write_text(to_markdown(result), encoding="utf-8")
+    return {"json": str(json_path), "markdown": str(markdown_path)}
+
+
+def _batch_summary(rows: list[dict[str, Any]], *, source_path: Path, output_dir: Path | None) -> dict[str, Any]:
+    decisions = Counter(row["decision"] for row in rows)
+    policy_counts = Counter(policy_id for row in rows for policy_id in row["policy_ids"])
+    return {
+        "summary_version": 1,
+        "source": str(source_path),
+        "total_rows": len(rows),
+        "decision_counts": dict(sorted(decisions.items())),
+        "policy_counts": dict(sorted(policy_counts.items())),
+        "privacy": {
+            "raw_creative_included": False,
+            "summary_omits_fields": sorted(PRIVATE_BATCH_FIELDS),
+            "row_reports": "local_output_dir_only" if output_dir else "not_written",
+        },
+        "rows": rows,
+    }
+
+
+def _write_batch_reports(summary: dict[str, Any], output_dir: Path) -> dict[str, str]:
+    json_path = output_dir / "adlint-batch-summary.json"
+    markdown_path = output_dir / "adlint-batch-summary.md"
+    csv_path = output_dir / "adlint-batch-summary.csv"
+
+    json_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    markdown_path.write_text(summary_to_markdown(summary), encoding="utf-8")
+    csv_path.write_text(to_summary_csv(summary), encoding="utf-8")
+    return {"json": str(json_path), "markdown": str(markdown_path), "csv": str(csv_path)}

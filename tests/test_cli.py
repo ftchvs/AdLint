@@ -101,9 +101,9 @@ def test_cli_batch_prints_private_json_summary(tmp_path, capsys) -> None:
     assert output["total_rows"] == 2
     assert output["decision_counts"] == {"approved": 1, "high_risk": 1}
     assert output["privacy"]["raw_creative_included"] is False
-    assert output["rows"][0]["row_id"] == "safe"
+    assert output["rows"][0]["id"] == "safe"
     assert output["rows"][0]["decision"] == "approved"
-    assert output["rows"][1]["row_id"] == "risk"
+    assert output["rows"][1]["id"] == "risk"
     assert output["rows"][1]["decision"] == "high_risk"
     assert "Lose 20 pounds" not in json.dumps(output)
     assert "clinically proven supplement" not in json.dumps(output)
@@ -126,14 +126,37 @@ def test_cli_batch_writes_local_archive_and_csv_summary(tmp_path, capsys) -> Non
     assert main(["batch", str(csv_path), "--output-dir", str(output_dir), "--format", "csv"]) == 0
 
     stdout = capsys.readouterr().out
-    assert stdout.startswith("row_id,row_number,platform,industry,decision")
-    assert "client-a,1,linkedin,saas,approved" in stdout
+    assert stdout.startswith("id,decision,risk_score,requires_review,policy_ids")
+    assert "client-a,approved," in stdout
     assert (output_dir / "adlint-batch-summary.json").exists()
     assert (output_dir / "adlint-batch-summary.csv").exists()
-    assert (output_dir / "cases" / "client-a" / "adlint-report.json").exists()
-    assert (output_dir / "cases" / "client-a" / "adlint-report.md").exists()
+    assert (output_dir / "adlint-batch-summary.md").exists()
+    assert (output_dir / "client-a.json").exists()
+    assert (output_dir / "client-a.md").exists()
 
     summary = json.loads((output_dir / "adlint-batch-summary.json").read_text(encoding="utf-8"))
-    assert summary["rows"][0]["json_report"] == str(
-        Path(output_dir) / "cases" / "client-a" / "adlint-report.json"
+    assert summary["privacy"]["raw_creative_included"] is False
+    assert summary["rows"][0]["reports"]["json"] == str(Path(output_dir) / "client-a.json")
+
+
+def test_cli_batch_markdown_summary_omits_raw_copy(tmp_path, capsys) -> None:
+    csv_path = tmp_path / "ads.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "id,platform,industry,headline,body,cta",
+                "risk,tiktok,health,Lose 20 pounds in 30 days guaranteed,Our clinically proven supplement melts fat fast.,Buy now",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
     )
+
+    assert main(["batch", str(csv_path), "--format", "markdown"]) == 0
+
+    output = capsys.readouterr().out
+    assert output.startswith("# AdLint Batch Summary")
+    assert "| risk | `high_risk` |" in output
+    assert "Batch summaries intentionally omit raw ad copy" in output
+    assert "Lose 20 pounds" not in output
+    assert "clinically proven supplement" not in output
