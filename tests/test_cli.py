@@ -146,7 +146,7 @@ def test_cli_batch_accepts_creative_asset_metadata_column(tmp_path, capsys) -> N
         "\n".join(
             [
                 "id,platform,industry,headline,body,cta,creative_assets",
-                'asset-a,meta,saas,Plan campaign launches,Coordinate launch notes.,Learn more,"[{""kind"": ""image"", ""path"": ""banner.png""}]"',
+                'asset-a,tiktok,health,Daily wellness routine,A simple guide.,Learn more,"[{""asset_type"": ""image"", ""path"": ""/private/banner.png"", ""text_overlay"": ""Lose 20 pounds in 30 days guaranteed""}]"',
             ]
         )
         + "\n",
@@ -155,9 +155,25 @@ def test_cli_batch_accepts_creative_asset_metadata_column(tmp_path, capsys) -> N
 
     assert main(["batch", str(csv_path), "--output-dir", str(output_dir)]) == 0
 
-    capsys.readouterr()
+    output = json.loads(capsys.readouterr().out)
     report = json.loads((output_dir / "asset-a.json").read_text(encoding="utf-8"))
-    assert report["creative_assets"] == [{"kind": "image", "path": "banner.png"}]
+    assert output["rows"][0]["asset_count"] == 1
+    assert output["rows"][0]["decision"] == "high_risk"
+    assert "Lose 20 pounds" not in json.dumps(output)
+    assert "/private/banner.png" not in json.dumps(output)
+    assert report["creative_assets"] == [
+        {
+            "asset_id": "banner_png",
+            "asset_type": "image",
+            "filename": "banner.png",
+            "text_metadata": {
+                "alt_text": False,
+                "labels": 0,
+                "text_overlay": True,
+                "transcript_excerpt": False,
+            },
+        }
+    ]
 
 
 def test_cli_batch_markdown_summary_omits_raw_copy(tmp_path, capsys) -> None:

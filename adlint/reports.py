@@ -94,16 +94,21 @@ def to_markdown(result: AnalysisResult) -> str:
 
     if result.creative_assets:
         lines.extend(["", "## Creative Assets", ""])
-        lines.append("- Review mode: metadata-only placeholder. Raw media files are not read or stored by default.")
+        lines.append("- Review mode: metadata-only. Raw media files and local paths are not read or stored by default.")
         for index, asset in enumerate(result.creative_assets, start=1):
-            details = [str(asset.get("kind", "unknown"))]
-            if asset.get("path"):
-                details.append(str(asset["path"]))
-            if asset.get("mime_type"):
-                details.append(str(asset["mime_type"]))
+            details = [asset.asset_type]
+            if asset.filename:
+                details.append(asset.filename)
+            if asset.mime_type:
+                details.append(asset.mime_type)
+            if asset.width and asset.height:
+                details.append(f"{asset.width}x{asset.height}")
+            if asset.duration_seconds is not None:
+                details.append(f"{asset.duration_seconds:g}s")
             lines.append(f"- Asset {index}: {' | '.join(details)}")
-            if asset.get("notes"):
-                lines.append(f"  - Notes: {asset['notes']}")
+            text_metadata = asset.to_dict()["text_metadata"]
+            if any(text_metadata.values()):
+                lines.append("  - Text metadata supplied for local rule checks; text contents are not reprinted in this section.")
 
     lines.extend(
         [

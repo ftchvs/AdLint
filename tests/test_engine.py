@@ -113,6 +113,70 @@ def test_landing_page_mismatch_accepts_percent_offer_in_pricing_text() -> None:
     assert "landing_page_offer_mismatch" not in policy_ids(result)
 
 
+def test_creative_asset_text_overlay_uses_existing_policy_rules_without_raw_media() -> None:
+    result = analyze(
+        {
+            "platform": "tiktok",
+            "industry": "health",
+            "headline": "Daily wellness routine",
+            "body": "A simple guide for planning healthy habits.",
+            "cta": "Learn more",
+            "creative_assets": [
+                {
+                    "asset_id": "hero-image",
+                    "asset_type": "image",
+                    "path": "/private/campaigns/hero.png",
+                    "mime_type": "image/png",
+                    "width": 1080,
+                    "height": 1080,
+                    "text_overlay": "Lose 20 pounds in 30 days guaranteed",
+                }
+            ],
+        }
+    )
+
+    hits = {hit.policy_id: hit for hit in result.policy_hits}
+    payload = result.to_dict()
+
+    assert result.decision == "high_risk"
+    assert {"weight_loss_claim", "guaranteed_outcome", "tiktok_weight_management_claim"} <= policy_ids(result)
+    assert hits["weight_loss_claim"].evidence[0].source == "creative_asset_hero_image_text_overlay"
+    assert payload["creative_assets"] == [
+        {
+            "asset_id": "hero_image",
+            "asset_type": "image",
+            "filename": "hero.png",
+            "height": 1080,
+            "mime_type": "image/png",
+            "text_metadata": {
+                "alt_text": False,
+                "labels": 0,
+                "text_overlay": True,
+                "transcript_excerpt": False,
+            },
+            "width": 1080,
+        }
+    ]
+    assert "/private/campaigns" not in json.dumps(payload)
+    assert "Lose 20 pounds" not in json.dumps(payload["creative_assets"])
+
+
+def test_creative_asset_empty_metadata_does_not_create_policy_hit() -> None:
+    result = analyze(
+        {
+            "platform": "linkedin",
+            "industry": "saas",
+            "headline": "Plan campaign launches",
+            "body": "Coordinate launch notes.",
+            "cta": "Learn more",
+            "creative_assets": [{"asset_type": "video", "filename": "launch.mp4", "duration_seconds": 12}],
+        }
+    )
+
+    assert result.decision == "approved"
+    assert result.policy_hits == []
+
+
 
 
 def test_meta_special_ad_category_review_applies_outside_default_verticals() -> None:

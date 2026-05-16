@@ -74,8 +74,9 @@ make api  # then open http://127.0.0.1:8000/ui/
 - Optional `scoring.yml` threshold and weight overrides for team calibration.
 - JSON stdout, Markdown stdout, and paired JSON/Markdown report files.
 - Safer rewrite suggestions for high-risk and review-required findings.
-- Metadata-only `creative_assets` placeholders for future image, OCR, audio,
-  and video validators. Raw media is not read or stored by default.
+- Metadata-only `creative_assets` placeholders for image/video review inputs.
+  Supplied OCR or transcript excerpts can run through text rules, while raw
+  media is not read or stored by default.
 - Opt-in JSONL run logging for local evaluation workflows.
 - Opt-in SQLite metadata storage for scan summaries and eval scores.
 - Seed, benchmark, public-source real-case, and blind web-sourced eval runners.
@@ -94,9 +95,9 @@ make api  # then open http://127.0.0.1:8000/ui/
 - Playwright or trafilatura extraction. The current landing-page extractor is
   a small stdlib HTML parser that can read inline HTML, local files, or
   fetchable HTML URLs.
-- Image/video policy decisions. Creative asset metadata can be attached to
-  reports, but AdLint does not yet run OCR, frame analysis, speech-to-text, or
-  visual policy checks.
+- Native image/video analysis. Creative asset metadata can be attached to
+  reports and supplied text metadata can be checked by text rules, but AdLint
+  does not yet run OCR, frame analysis, speech-to-text, or visual policy checks.
 - Fine-tuning. Local model support is available for decision support, but
   deterministic rules are the production baseline until live evals prove
   incremental value.
@@ -188,6 +189,40 @@ Example config:
 Optional input fields include `target_age_range`, `landing_page_url`,
 `creative_assets`, `model_enabled`, `model_affects_score`, `ollama_model`,
 `logging_enabled`, `log_path`, `storage_enabled`, and `storage_path`.
+
+### Creative asset metadata
+
+Use `creative_assets` to attach private, metadata-only placeholders for image,
+video, audio, display, or HTML5 assets. AdLint does not read the raw file, store
+the local path, run OCR, or claim visual policy coverage. If you already have
+OCR text, transcript snippets, alt text, or labels from a local workflow, pass
+those fields so the existing text rules can inspect them:
+
+```json
+{
+  "platform": "tiktok",
+  "industry": "health",
+  "headline": "Daily wellness routine",
+  "body": "A simple guide for planning healthy habits.",
+  "cta": "Learn more",
+  "creative_assets": [
+    {
+      "asset_id": "hero-image",
+      "asset_type": "image",
+      "path": "/private/campaigns/hero.png",
+      "mime_type": "image/png",
+      "width": 1080,
+      "height": 1080,
+      "text_overlay": "Lose 20 pounds in 30 days guaranteed"
+    }
+  ]
+}
+```
+
+Reports include sanitized asset metadata such as `filename`, dimensions, media
+type, and booleans showing which text metadata fields were supplied. Batch
+summaries omit the `creative_assets` column by default; per-row reports remain
+local when `--output-dir` is used.
 
 Use `platform: "all"` when you want one broad preflight pass across the
 platform-scoped policy modules AdLint currently ships. This is useful for early

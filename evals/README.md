@@ -7,7 +7,13 @@ platform approval.
 ## Datasets
 
 - `datasets/seed_ads.jsonl`: 58-example smoke set.
-- `datasets/rule_benchmark_v1.jsonl`: 209-example deterministic benchmark.
+- `datasets/rule_benchmark_v1.jsonl`: 213-example deterministic benchmark.
+- `datasets/landing_page_consistency_v1.jsonl`: focused landing-page offer
+  consistency rows for material terms such as free trials, discounts, and
+  limited-time percent-off claims.
+- `datasets/creative_asset_metadata_v1.jsonl`: focused rows for metadata-only
+  creative asset inputs. These rows test supplied OCR/text-overlay metadata and
+  empty asset metadata; they do not test native image/video analysis.
 - `datasets/real_cases_v1.jsonl`: 75 public-source, paraphrased real-case
   diagnostics balanced across 25 `approved`, 25 `needs_review`, and 25
   `high_risk` expected decisions. These rows come from public marketing pages,
@@ -31,6 +37,13 @@ Run the benchmark:
 
 ```bash
 make benchmark
+```
+
+Run focused workflow evals:
+
+```bash
+make landing-page-consistency
+make creative-assets-eval
 ```
 
 Validate or refresh policy coverage inventory:

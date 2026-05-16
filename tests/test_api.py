@@ -63,6 +63,33 @@ def test_analyze_accepts_valid_payload() -> None:
     } <= payload.keys()
 
 
+def test_analyze_accepts_creative_asset_metadata_without_returning_raw_path() -> None:
+    response = client.post(
+        "/analyze",
+        json={
+            "platform": "tiktok",
+            "industry": "health",
+            "headline": "Daily wellness routine",
+            "body": "A simple guide.",
+            "cta": "Learn more",
+            "creative_assets": [
+                {
+                    "asset_type": "image",
+                    "path": "/private/creative/weight-loss.png",
+                    "text_overlay": "Lose 20 pounds in 30 days guaranteed",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["decision"] == "high_risk"
+    assert payload["creative_assets"][0]["filename"] == "weight-loss.png"
+    assert "/private/creative" not in json.dumps(payload["creative_assets"])
+    assert "Lose 20 pounds" not in json.dumps(payload["creative_assets"])
+
+
 def test_models_endpoint_returns_available_ollama_models(monkeypatch) -> None:
     def fake_urlopen(request, timeout):
         assert request.full_url == "http://localhost:11434/api/tags"

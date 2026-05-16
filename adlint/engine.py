@@ -63,7 +63,7 @@ def analyze(
         enabled_modules=enabled_modules(submission),
         model=model_info,
         logging_enabled=submission.logging_enabled,
-        creative_assets=[asset.to_dict() for asset in submission.creative_assets],
+        creative_assets=submission.creative_assets,
     )
 
     if output_dir:

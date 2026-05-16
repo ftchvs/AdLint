@@ -1,0 +1,19 @@
+{
+  "platform": "tiktok",
+  "country": "US",
+  "industry": "health",
+  "headline": "Daily wellness routine",
+  "body": "A simple guide for planning healthy habits.",
+  "cta": "Learn more",
+  "creative_assets": [
+    {
+      "asset_id": "hero-image",
+      "asset_type": "image",
+      "path": "/private/campaigns/hero.png",
+      "mime_type": "image/png",
+      "width": 1080,
+      "height": 1080,
+      "text_overlay": "Lose 20 pounds in 30 days guaranteed"
+    }
+  ]
+}

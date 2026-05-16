@@ -68,13 +68,26 @@ def test_sqlite_storage_does_not_persist_raw_ad_or_page_fields(tmp_path) -> None
         "cta": "UNIQUE_CTA_DO_NOT_STORE_946a",
         "landing_page_url": "https://example.com/UNIQUE_URL_DO_NOT_STORE_946a",
         "landing_page_html": "<html>UNIQUE_HTML_DO_NOT_STORE_946a</html>",
+        "creative_asset_text": "UNIQUE_ASSET_TEXT_DO_NOT_STORE_946a",
+        "creative_asset_path": "/private/UNIQUE_ASSET_PATH_DO_NOT_STORE_946a.png",
     }
 
     analyze(
         {
             "platform": "google",
             "industry": "health",
-            **raw_values,
+            "headline": raw_values["headline"],
+            "body": raw_values["body"],
+            "cta": raw_values["cta"],
+            "landing_page_url": raw_values["landing_page_url"],
+            "landing_page_html": raw_values["landing_page_html"],
+            "creative_assets": [
+                {
+                    "asset_type": "image",
+                    "path": raw_values["creative_asset_path"],
+                    "text_overlay": raw_values["creative_asset_text"],
+                }
+            ],
             "storage_enabled": True,
             "storage_path": str(db_path),
         }
@@ -89,7 +102,14 @@ def test_sqlite_storage_does_not_persist_raw_ad_or_page_fields(tmp_path) -> None
             row[1]
             for row in connection.execute("PRAGMA table_info(analysis_runs)").fetchall()
         }
-    assert {"headline", "body", "cta", "landing_page_url", "landing_page_html"}.isdisjoint(columns)
+    assert {
+        "headline",
+        "body",
+        "cta",
+        "landing_page_url",
+        "landing_page_html",
+        "creative_assets",
+    }.isdisjoint(columns)
 
 
 def test_jsonl_logging_stays_independent_when_sqlite_is_not_enabled(tmp_path, monkeypatch) -> None:

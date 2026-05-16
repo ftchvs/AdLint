@@ -85,10 +85,12 @@ def test_report_includes_creative_asset_metadata_without_policy_claims() -> None
             "cta": "Learn more",
             "creative_assets": [
                 {
-                    "kind": "image",
+                    "asset_type": "image",
                     "path": "creative/banner.png",
                     "mime_type": "image/png",
-                    "notes": "Static banner for future OCR review.",
+                    "width": 1200,
+                    "height": 628,
+                    "text_overlay": "Plan every launch from one checklist.",
                 }
             ],
         }
@@ -99,13 +101,24 @@ def test_report_includes_creative_asset_metadata_without_policy_claims() -> None
 
     assert payload["creative_assets"] == [
         {
-            "kind": "image",
-            "path": "creative/banner.png",
+            "asset_id": "banner_png",
+            "asset_type": "image",
+            "filename": "banner.png",
+            "height": 628,
             "mime_type": "image/png",
-            "notes": "Static banner for future OCR review.",
+            "text_metadata": {
+                "alt_text": False,
+                "labels": 0,
+                "text_overlay": True,
+                "transcript_excerpt": False,
+            },
+            "width": 1200,
         }
     ]
     assert "## Creative Assets" in markdown
-    assert "metadata-only placeholder" in markdown
-    assert "Raw media files are not read or stored by default." in markdown
+    assert "metadata-only" in markdown
+    assert "Raw media files and local paths are not read or stored by default." in markdown
+    assert "banner.png" in markdown
+    assert "creative/banner.png" not in markdown
+    assert "Plan every launch" not in markdown
     assert "visual compliance" not in markdown.lower()

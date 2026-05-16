@@ -18,6 +18,7 @@ JSON_FIELDS = {"creative_assets", "assets"}
 PRIVATE_BATCH_FIELDS = {
     "body",
     "cta",
+    "creative_assets",
     "headline",
     "landing_page_html",
     "landing_page_url",
@@ -28,6 +29,7 @@ SUMMARY_FIELDS = (
     "risk_score",
     "requires_review",
     "policy_ids",
+    "asset_count",
     "json_report",
     "markdown_report",
 )
@@ -73,6 +75,7 @@ def run_batch(csv_path: str | Path, options: BatchOptions | None = None) -> dict
                 "decision": result.decision,
                 "risk_score": round(result.risk_score, 4),
                 "requires_review": result.requires_review,
+                "asset_count": len(result.creative_assets),
                 "policy_ids": policy_ids,
                 "reports": report_paths,
             }
@@ -134,6 +137,7 @@ def to_summary_csv(summary: dict[str, Any]) -> str:
                 "risk_score": f"{row['risk_score']:.4f}",
                 "requires_review": str(row["requires_review"]).lower(),
                 "policy_ids": ";".join(row["policy_ids"]),
+                "asset_count": str(row.get("asset_count", 0)),
                 "json_report": reports.get("json", ""),
                 "markdown_report": reports.get("markdown", ""),
             }

@@ -50,6 +50,15 @@ EXAMPLE_EXPECTATIONS = {
         "needs_review",
         {"tracking_pixel_risk", "health_form_tracking_risk"},
     ),
+    "tiktok_asset_text_overlay_review.json": (
+        "high_risk",
+        {
+            "guaranteed_outcome",
+            "weight_loss_claim",
+            "tiktok_weight_management_claim",
+            "tiktok_misleading_content",
+        },
+    ),
 }
 
 
