@@ -31,6 +31,9 @@ def to_markdown(result: AnalysisResult) -> str:
                 f"- Recommended action: {hit.recommended_action}",
             ]
         )
+        source = _policy_source_markdown(hit.policy_source)
+        if source:
+            lines.append(f"- Policy source: {source}")
         if hit.requires_review:
             lines.append("- Review label: `requires_review`")
         lines.append("- Evidence:")
@@ -104,6 +107,18 @@ def _model_status(model: dict[str, object]) -> str:
     if selected_model:
         return f"{status} ({selected_model})"
     return status
+
+
+def _policy_source_markdown(policy_source: dict[str, str]) -> str:
+    if not policy_source:
+        return ""
+    url = policy_source.get("url", "")
+    note = policy_source.get("note", "")
+    if url and note:
+        return f"[{note}]({url})"
+    if url:
+        return url
+    return note
 
 
 def write_reports(result: AnalysisResult, output_dir: str | Path) -> dict[str, str]:

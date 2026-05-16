@@ -84,6 +84,8 @@ def _load_policy_file(path: Path) -> list[Policy]:
                 rewrite_strategy=item.get("rewrite_strategy"),
                 requires_review=bool(item.get("requires_review", False)),
                 model_prompt=item.get("model_prompt"),
+                source_url=item.get("source_url"),
+                source_note=item.get("source_note"),
                 iab_taxonomy=dict(item.get("iab_taxonomy") or {}),
             )
         )

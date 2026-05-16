@@ -33,6 +33,8 @@ class Policy:
     rewrite_strategy: str | None = None
     requires_review: bool = False
     model_prompt: str | None = None
+    source_url: str | None = None
+    source_note: str | None = None
     iab_taxonomy: dict[str, Any] = field(default_factory=dict)
 
 
@@ -46,6 +48,7 @@ class PolicyHit:
     requires_review: bool = False
     description: str = ""
     source: str = "rules"
+    policy_source: dict[str, str] = field(default_factory=dict)
     iab_taxonomy: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -62,6 +65,8 @@ class PolicyHit:
             payload["description"] = self.description
         if self.source != "rules":
             payload["source"] = self.source
+        if self.policy_source:
+            payload["policy_source"] = self.policy_source
         if self.iab_taxonomy:
             payload["iab_taxonomy"] = self.iab_taxonomy
         return payload

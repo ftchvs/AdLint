@@ -3,6 +3,8 @@ policies:
     severity: high
     category: platform_policy
     description: TikTok ads can restrict weight-management and body-image claims.
+    source_url: https://ads.tiktok.com/help/article/tiktok-ads-policy-misleading-and-false-content?lang=en
+    source_note: TikTok misleading, false-content, and before-after policy guidance
     modules: [platform]
     platforms: [tiktok]
     industries: [health, wellness]
@@ -20,6 +22,8 @@ policies:
     severity: high
     category: platform_policy
     description: Misleading efficacy, urgency, or testimonial framing can trigger review.
+    source_url: https://ads.tiktok.com/help/article/tiktok-ads-policy-misleading-and-false-content?lang=en
+    source_note: TikTok misleading and false-content policy guidance
     modules: [platform]
     platforms: [tiktok]
     signals:
@@ -35,6 +39,8 @@ policies:
     severity: medium
     category: platform_policy
     description: Sponsored, affiliate, or creator claims may need prominent disclosures.
+    source_url: https://www.tiktok.com/legal/page/global/bc-policy/en
+    source_note: TikTok branded-content disclosure policy guidance
     modules: [platform]
     platforms: [tiktok]
     industries: [creator, wellness, health]

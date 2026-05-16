@@ -3,6 +3,8 @@ policies:
     severity: medium
     category: privacy
     description: Tracking pixels on health-adjacent pages can require consent and disclosure review.
+    source_url: https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/hipaa-online-tracking/index.html
+    source_note: HHS HIPAA online tracking guidance
     modules: [privacy]
     industries: [health, wellness]
     requires_review: true
@@ -20,6 +22,8 @@ policies:
     severity: medium
     category: privacy
     description: Health forms paired with trackers can create elevated privacy-review risk.
+    source_url: https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/hipaa-online-tracking/index.html
+    source_note: HHS HIPAA online tracking guidance
     modules: [privacy]
     industries: [health, wellness]
     requires_review: true

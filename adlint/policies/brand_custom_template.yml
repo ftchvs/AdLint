@@ -3,6 +3,8 @@ policies:
     severity: medium
     category: disclosure
     description: Affiliate, creator, or sponsorship language may require clear disclosure.
+    source_url: https://www.ftc.gov/business-guidance/resources/ftcs-endorsement-guides
+    source_note: FTC Endorsement Guides disclosure guidance
     modules: [disclosure, platform]
     industries: [creator, wellness, health, finance]
     requires_review: true
@@ -19,6 +21,8 @@ policies:
     severity: medium
     category: landing_page
     description: Landing page content may not match the ad's offer or claim framing.
+    source_url: https://support.google.com/adspolicy/answer/6008942?hl=en
+    source_note: Google Ads destination and editorial policy guidance
     modules: [landing_page]
     signals:
       - mismatch_detected

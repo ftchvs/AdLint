@@ -7,6 +7,8 @@ policies:
     severity: high
     category: platform_policy
     description: Meta ads should not imply knowledge of a viewer's health, body, or medical condition.
+    source_url: https://transparency.meta.com/policies/ad-standards/
+    source_note: Meta Advertising Standards overview
     modules: [platform]
     platforms: [meta]
     industries: [health, wellness]
@@ -24,6 +26,8 @@ policies:
     severity: high
     category: platform_policy
     description: Meta ads should not imply knowledge of a viewer's financial hardship or credit status.
+    source_url: https://transparency.meta.com/policies/ad-standards/
+    source_note: Meta Advertising Standards overview
     modules: [platform]
     platforms: [meta]
     industries: [finance]
@@ -41,6 +45,8 @@ policies:
     severity: high
     category: platform_policy
     description: Meta health and appearance ads can be rejected for unrealistic results or negative self-perception framing.
+    source_url: https://transparency.meta.com/policies/ad-standards/
+    source_note: Meta Advertising Standards overview
     modules: [platform]
     platforms: [meta]
     industries: [health, wellness]
@@ -61,6 +67,8 @@ policies:
     severity: medium
     category: platform_policy
     description: Meta health, weight-loss, cosmetic, sexual-health, and reproductive-health ads can require 18+ targeting review.
+    source_url: https://transparency.meta.com/policies/ad-standards/
+    source_note: Meta Advertising Standards overview
     modules: [platform]
     platforms: [meta]
     industries: [health, wellness]
@@ -81,6 +89,8 @@ policies:
     severity: medium
     category: platform_policy
     description: Meta financial product ads can require authorization, licensing, disclosures, and 18+ targeting review.
+    source_url: https://transparency.meta.com/policies/ad-standards/restricted-goods-services/financial-services/
+    source_note: Meta financial and insurance products policy guidance
     modules: [platform]
     platforms: [meta]
     industries: [finance]
@@ -103,6 +113,8 @@ policies:
     severity: medium
     category: platform_policy
     description: Meta campaigns for housing, employment, or financial products/services may require Special Ad Category configuration and targeting limits.
+    source_url: https://developers.facebook.com/docs/marketing-api/audiences/special-ad-category/
+    source_note: Meta Marketing API Special Ad Category guidance
     modules: [platform]
     platforms: [meta]
     requires_review: true
@@ -123,6 +135,8 @@ policies:
     severity: high
     category: platform_policy
     description: Meta ads should not request financial, health, or other private information without appropriate permission and review.
+    source_url: https://transparency.meta.com/policies/ad-standards/
+    source_note: Meta Advertising Standards overview
     modules: [platform]
     platforms: [meta]
     requires_review: true
@@ -141,6 +155,8 @@ policies:
     severity: medium
     category: platform_policy
     description: Meta branded-content and creator integrations may need clear sponsorship tagging and disclosures.
+    source_url: https://www.facebook.com/business/help/221149188908254
+    source_note: Meta branded-content disclosure guidance
     modules: [platform]
     platforms: [meta]
     industries: [creator, wellness, health, finance]

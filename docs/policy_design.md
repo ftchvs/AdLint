@@ -4,6 +4,9 @@ AdLint policies live in version-controlled YAML under `adlint/policies/`.
 Each file contains a `policies` list. A policy maps simple deterministic
 signals to a policy ID, severity, category, recommended action, optional
 module/platform/industry filters, and optional IAB-style suitability metadata.
+Built-in policies should also include source metadata when there is a stable
+public reference. Source links are report context, not proof that a finding is
+a definitive violation.
 
 Minimal policy shape:
 
@@ -17,6 +20,8 @@ policies:
     signals:
       - clinically proven
       - guaranteed
+    source_url: https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance
+    source_note: FTC Health Products Compliance Guidance
     recommended_action: Remove or qualify the claim and provide substantiation.
     rewrite_strategy: qualify_claim
 ```
@@ -62,3 +67,11 @@ The bundled platform files are:
 HIPAA, FTC Health Breach Notification Rule, Washington My Health My Data Act,
 CCPA, and tracking-pixel findings are labeled `requires_review`. AdLint does
 not make definitive legal determinations.
+
+## Source notes
+
+`source_url` and `source_note` are optional YAML fields. When present, they are
+copied into JSON output under `policy_source` and rendered in Markdown reports
+as the finding's policy source. Prefer official policy, regulator, or standards
+references. Do not use source notes to imply that AdLint guarantees platform
+approval or legal compliance.

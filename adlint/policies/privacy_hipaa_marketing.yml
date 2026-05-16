@@ -3,6 +3,8 @@ policies:
     severity: high
     category: privacy
     description: Health marketing by covered entities or business associates may require HIPAA review.
+    source_url: https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/marketing/index.html
+    source_note: HHS HIPAA marketing guidance
     modules: [privacy]
     industries: [health]
     requires_review: true
@@ -21,6 +23,8 @@ policies:
     severity: high
     category: privacy
     description: Health context combined with tracking technology may require privacy review.
+    source_url: https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/hipaa-online-tracking/index.html
+    source_note: HHS HIPAA online tracking guidance
     modules: [privacy]
     industries: [health]
     requires_review: true

@@ -3,6 +3,8 @@ policies:
     severity: high
     category: privacy
     description: Health apps and connected devices can trigger FTC Health Breach Notification review.
+    source_url: https://www.ftc.gov/business-guidance/resources/complying-ftcs-health-breach-notification-rule-0
+    source_note: FTC Health Breach Notification Rule guidance
     modules: [privacy]
     industries: [health, wellness]
     requires_review: true
@@ -19,6 +21,8 @@ policies:
     severity: medium
     category: privacy
     description: Washington My Health My Data Act indicators require consumer-health-data review.
+    source_url: https://www.atg.wa.gov/protecting-washingtonians-personal-health-data-and-privacy
+    source_note: Washington My Health My Data Act overview
     modules: [privacy]
     industries: [health, wellness]
     requires_review: true
@@ -35,6 +39,8 @@ policies:
     severity: medium
     category: privacy
     description: Sensitive health-data indicators can require CCPA notice and rights review.
+    source_url: https://oag.ca.gov/privacy/ccpa
+    source_note: California CCPA sensitive personal information guidance
     modules: [privacy]
     industries: [health, wellness]
     requires_review: true

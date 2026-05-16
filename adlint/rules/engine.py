@@ -60,6 +60,7 @@ def run_rule_checks(
                 recommended_action=policy.recommended_action,
                 requires_review=policy.requires_review,
                 description=policy.description,
+                policy_source=_policy_source(policy),
                 iab_taxonomy=policy.iab_taxonomy,
             )
         )
@@ -183,6 +184,7 @@ def _derived_linkedin_professional_claim_hits(
                 "to review without the high-risk treatment reserved for explicit guarantees."
             ),
             source="derived_rules",
+            policy_source=_policy_source(policy),
             iab_taxonomy=policy.iab_taxonomy,
         )
     ]
@@ -235,6 +237,7 @@ def _derived_landing_page_hits(
             recommended_action=mismatch_policy.recommended_action,
             requires_review=mismatch_policy.requires_review,
             description=mismatch_policy.description,
+            policy_source=_policy_source(mismatch_policy),
         )
     ]
 
@@ -272,8 +275,18 @@ def _derived_privacy_hits(
             recommended_action=policy.recommended_action,
             requires_review=True,
             description=policy.description,
+            policy_source=_policy_source(policy),
         )
     ]
+
+
+def _policy_source(policy: Policy) -> dict[str, str]:
+    source: dict[str, str] = {}
+    if policy.source_url:
+        source["url"] = policy.source_url
+    if policy.source_note:
+        source["note"] = policy.source_note
+    return source
 
 
 def _signal_to_regex(signal: str) -> re.Pattern[str]:

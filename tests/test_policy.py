@@ -29,6 +29,28 @@ def test_load_policies_accepts_custom_file(tmp_path) -> None:
     assert policies[0].requires_review is True
 
 
+def test_load_policies_preserves_optional_source_metadata(tmp_path) -> None:
+    policy_path = tmp_path / "custom.yml"
+    policy_path.write_text(
+        """
+policies:
+  - id: sourced_policy
+    severity: medium
+    category: platform_policy
+    source_url: https://example.com/policy
+    source_note: Example policy source
+    signals: [review me]
+    recommended_action: Review the claim.
+""",
+        encoding="utf-8",
+    )
+
+    policies = load_policies([policy_path])
+
+    assert policies[0].source_url == "https://example.com/policy"
+    assert policies[0].source_note == "Example policy source"
+
+
 def test_load_policies_accepts_custom_directory(tmp_path) -> None:
     policy_dir = tmp_path / "policies"
     policy_dir.mkdir()

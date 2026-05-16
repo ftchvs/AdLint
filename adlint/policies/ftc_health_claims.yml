@@ -3,6 +3,8 @@ policies:
     severity: high
     category: health_claims
     description: Health or wellness claim likely requiring substantiation.
+    source_url: https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance
+    source_note: FTC Health Products Compliance Guidance
     modules: [health_claims]
     industries: [health, wellness]
     signals:
@@ -26,6 +28,8 @@ policies:
     severity: high
     category: health_claims
     description: Absolute outcome language increases substantiation risk.
+    source_url: https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance
+    source_note: FTC Health Products Compliance Guidance
     modules: [health_claims]
     signals:
       - guaranteed
@@ -40,6 +44,8 @@ policies:
     severity: high
     category: health_claims
     description: Weight-loss and body-image claims can trigger platform and FTC review.
+    source_url: https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance
+    source_note: FTC Health Products Compliance Guidance
     modules: [health_claims, platform]
     industries: [health, wellness]
     signals:
@@ -57,6 +63,8 @@ policies:
     severity: critical
     category: health_claims
     description: Medical cure, treatment, or diagnosis claims need formal review.
+    source_url: https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance
+    source_note: FTC Health Products Compliance Guidance
     modules: [health_claims]
     signals:
       - cure
@@ -72,6 +80,8 @@ policies:
     severity: medium
     category: health_claims
     description: Wellness claim uses evidence framing that should be checked for substantiation.
+    source_url: https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance
+    source_note: FTC Health Products Compliance Guidance
     modules: [health_claims]
     industries: [health, wellness]
     signals:
@@ -85,6 +95,8 @@ policies:
     severity: medium
     category: health_claims
     description: Before-and-after framing can imply atypical guaranteed results.
+    source_url: https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance
+    source_note: FTC Health Products Compliance Guidance
     modules: [health_claims]
     signals:
       - before and after
@@ -98,6 +110,8 @@ policies:
     severity: medium
     category: misrepresentation
     description: Artificial urgency or scarcity can create misleading pressure.
+    source_url: https://support.google.com/adspolicy/answer/6008942?hl=en
+    source_note: Google Ads policies on clear, honest ads and destinations
     modules: [health_claims, platform]
     signals:
       - only * left

@@ -48,7 +48,12 @@ def test_report_writer_serializes_review_labels_and_landing_page_context(tmp_pat
         "markdown": str(tmp_path / "reports" / "nested" / "adlint-report.md"),
     }
     assert tracking_hit["requires_review"] is True
+    assert tracking_hit["policy_source"] == {
+        "note": "HHS HIPAA online tracking guidance",
+        "url": "https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/hipaa-online-tracking/index.html",
+    }
     assert "- Review label: `requires_review`" in markdown
+    assert "- Policy source: [HHS HIPAA online tracking guidance](https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/hipaa-online-tracking/index.html)" in markdown
     assert "## Landing Page" in markdown
     assert "- Headings:" in markdown
     assert "  - Simple sleep tips" in markdown
