@@ -69,6 +69,14 @@ def test_script_assigned_text_and_inline_analytics_are_extracted_locally() -> No
     assert "Google Analytics" in snapshot.tracking_scripts
 
 
+def test_percent_off_and_promo_code_text_is_pricing_context() -> None:
+    snapshot = extract_landing_page(
+        html="<html><body><p>Limited time 50% off with promo code LAUNCH50.</p></body></html>"
+    )
+
+    assert "Limited time 50% off with promo code LAUNCH50." in snapshot.pricing_text
+
+
 def test_fetch_and_parser_errors_are_reported_as_landing_context_not_policy_hits(monkeypatch) -> None:
     fetch_result = analyze(
         {

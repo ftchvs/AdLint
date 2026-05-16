@@ -44,6 +44,75 @@ def test_meta_landing_page_mismatch_stacks_with_platform_review() -> None:
     assert result.decision == "needs_review"
 
 
+def test_landing_page_mismatch_catches_single_missing_material_offer_term() -> None:
+    result = analyze(
+        {
+            "platform": "linkedin",
+            "industry": "saas",
+            "headline": "Free trial for campaign QA",
+            "body": "Use a launch workflow with a discount for new teams.",
+            "cta": "Start trial",
+            "landing_page_html": "<html><body><h1>Campaign QA workflow</h1><p>Coordinate briefs and approvals.</p></body></html>",
+        }
+    )
+
+    hits = {hit.policy_id: hit for hit in result.policy_hits}
+
+    assert result.decision == "needs_review"
+    assert "landing_page_offer_mismatch" in hits
+    assert "discount" in hits["landing_page_offer_mismatch"].evidence[0].text
+    assert "trial" in hits["landing_page_offer_mismatch"].evidence[0].text
+
+
+def test_landing_page_mismatch_accepts_visible_material_offer_terms() -> None:
+    result = analyze(
+        {
+            "platform": "linkedin",
+            "industry": "saas",
+            "headline": "Free trial for campaign QA",
+            "body": "Use a launch workflow with a discount for new teams.",
+            "cta": "Start trial",
+            "landing_page_html": "<html><body><h1>Campaign QA free trial</h1><p>New teams can review discount terms before launch.</p></body></html>",
+        }
+    )
+
+    assert "landing_page_offer_mismatch" not in policy_ids(result)
+
+
+def test_landing_page_mismatch_catches_missing_percent_off_offer() -> None:
+    result = analyze(
+        {
+            "platform": "tiktok",
+            "industry": "general",
+            "headline": "Limited time 50% off creator toolkit",
+            "body": "Use promo code LAUNCH50 before the sale ends.",
+            "cta": "Claim deal",
+            "landing_page_html": "<html><body><h1>Creator toolkit</h1><p>Templates for planning your launch.</p></body></html>",
+        }
+    )
+
+    hit = next(hit for hit in result.policy_hits if hit.policy_id == "landing_page_offer_mismatch")
+
+    assert result.decision == "needs_review"
+    assert "50% off" in hit.evidence[0].text
+    assert "limited time" in hit.evidence[0].text
+
+
+def test_landing_page_mismatch_accepts_percent_offer_in_pricing_text() -> None:
+    result = analyze(
+        {
+            "platform": "tiktok",
+            "industry": "general",
+            "headline": "Limited time 50% off creator toolkit",
+            "body": "Use promo code LAUNCH50 before the sale ends.",
+            "cta": "Claim deal",
+            "landing_page_html": "<html><body><h1>Creator toolkit</h1><p>Limited time 50% off with promo code LAUNCH50.</p></body></html>",
+        }
+    )
+
+    assert "landing_page_offer_mismatch" not in policy_ids(result)
+
+
 
 
 def test_meta_special_ad_category_review_applies_outside_default_verticals() -> None:

@@ -398,7 +398,11 @@ def _looks_like_claim(text: str) -> bool:
 
 def _looks_like_pricing(text: str) -> bool:
     lower = text.lower()
-    return "$" in text or any(word in lower for word in ("price", "pricing", "free trial", "discount"))
+    return (
+        "$" in text
+        or bool(re.search(r"\b\d{1,3}\s*%\s*off\b", lower))
+        or any(word in lower for word in ("price", "pricing", "free trial", "discount", "limited time", "promo code"))
+    )
 
 
 def _looks_like_disclaimer(text: str) -> bool:

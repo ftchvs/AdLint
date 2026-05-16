@@ -205,26 +205,41 @@ def _derived_landing_page_hits(
         return []
 
     ad_claim_terms = _important_terms(" ".join([submission.headline, submission.body]))
-    page_terms = _important_terms(
-        " ".join(
-            [
-                landing_page.title or "",
-                *landing_page.headings,
-                *landing_page.visible_claims,
-                *landing_page.disclaimers,
-            ]
-        )
+    page_text = " ".join(
+        [
+            landing_page.title or "",
+            *landing_page.headings,
+            *landing_page.visible_claims,
+            *landing_page.pricing_text,
+            *landing_page.disclaimers,
+        ]
     )
-    if not ad_claim_terms:
+    page_terms = _important_terms(page_text)
+    material_terms = _material_offer_terms(" ".join([submission.headline, submission.body, submission.cta]))
+    if not ad_claim_terms and not material_terms:
         return []
 
     missing_terms = sorted(ad_claim_terms - page_terms)
-    if len(missing_terms) < 2:
+    page_material_terms = _material_offer_terms(page_text)
+    missing_material_terms = sorted(material_terms - page_terms - page_material_terms)
+    if len(missing_material_terms) == 1 and not any("% off" in term for term in missing_material_terms):
+        missing_material_terms = []
+    if len(missing_terms) < 2 and not missing_material_terms:
         return []
 
+    if missing_material_terms:
+        evidence_text = (
+            "Ad offer terms are not visible in extracted landing-page copy: "
+            f"{', '.join(missing_material_terms[:5])}"
+        )
+    else:
+        evidence_text = (
+            "Ad emphasizes terms not found in extracted landing-page copy: "
+            f"{', '.join(missing_terms[:5])}"
+        )
     evidence = [
         Evidence(
-            text=f"Ad emphasizes terms not found in extracted landing-page copy: {', '.join(missing_terms[:5])}",
+            text=evidence_text,
             source="landing_page",
         )
     ]
@@ -348,3 +363,18 @@ def _important_terms(text: str) -> set[str]:
         "proven",
     }
     return {term for term in terms if term in interesting}
+
+
+def _material_offer_terms(text: str) -> set[str]:
+    normalized = re.sub(r"[^a-zA-Z0-9\s%$.-]", " ", text.lower())
+    phrases = {
+        "free trial": "trial",
+        "discount": "discount",
+        "limited time": "limited time",
+        "no fees": "fees",
+        "promo code": "promo code",
+    }
+    terms = {label for phrase, label in phrases.items() if phrase in normalized}
+    for match in re.finditer(r"\b\d{1,3}\s*%\s*off\b", normalized):
+        terms.add(re.sub(r"\s+", " ", match.group(0)))
+    return terms
