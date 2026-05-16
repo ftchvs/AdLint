@@ -92,6 +92,19 @@ def to_markdown(result: AnalysisResult) -> str:
         if page.fetch_error:
             lines.append(f"- Fetch error: {page.fetch_error}")
 
+    if result.creative_assets:
+        lines.extend(["", "## Creative Assets", ""])
+        lines.append("- Review mode: metadata-only placeholder. Raw media files are not read or stored by default.")
+        for index, asset in enumerate(result.creative_assets, start=1):
+            details = [str(asset.get("kind", "unknown"))]
+            if asset.get("path"):
+                details.append(str(asset["path"]))
+            if asset.get("mime_type"):
+                details.append(str(asset["mime_type"]))
+            lines.append(f"- Asset {index}: {' | '.join(details)}")
+            if asset.get("notes"):
+                lines.append(f"  - Notes: {asset['notes']}")
+
     lines.extend(
         [
             "",

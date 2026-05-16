@@ -117,6 +117,37 @@ class LandingPageSnapshot:
 
 
 @dataclass(frozen=True)
+class CreativeAsset:
+    kind: str
+    path: str | None = None
+    mime_type: str | None = None
+    notes: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any]) -> "CreativeAsset":
+        return cls(
+            kind=str(raw.get("kind") or raw.get("type") or "unknown").lower(),
+            path=raw.get("path") or raw.get("url"),
+            mime_type=raw.get("mime_type") or raw.get("content_type"),
+            notes=raw.get("notes"),
+            metadata=dict(raw.get("metadata") or {}),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"kind": self.kind}
+        if self.path:
+            payload["path"] = self.path
+        if self.mime_type:
+            payload["mime_type"] = self.mime_type
+        if self.notes:
+            payload["notes"] = self.notes
+        if self.metadata:
+            payload["metadata"] = self.metadata
+        return payload
+
+
+@dataclass(frozen=True)
 class Submission:
     platform: str
     country: str
@@ -134,10 +165,12 @@ class Submission:
     log_path: str | None = None
     storage_enabled: bool = False
     storage_path: str | None = None
+    creative_assets: tuple[CreativeAsset, ...] = ()
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "Submission":
         modules = raw.get("policy_modules") or raw.get("modules") or ()
+        creative_assets = _creative_assets_from_raw(raw.get("creative_assets") or raw.get("assets") or ())
         return cls(
             platform=str(raw.get("platform", "google")).lower(),
             country=str(raw.get("country", "US")),
@@ -155,6 +188,7 @@ class Submission:
             log_path=raw.get("log_path"),
             storage_enabled=bool(raw.get("storage_enabled", False)),
             storage_path=raw.get("storage_path"),
+            creative_assets=creative_assets,
         )
 
     def ad_fields(self) -> dict[str, str]:
@@ -181,6 +215,7 @@ class AnalysisResult:
     enabled_modules: list[str]
     model: dict[str, Any]
     logging_enabled: bool
+    creative_assets: list[dict[str, Any]] = field(default_factory=list)
     reports: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -196,6 +231,26 @@ class AnalysisResult:
             "model": self.model,
             "logging_enabled": self.logging_enabled,
         }
+        if self.creative_assets:
+            payload["creative_assets"] = self.creative_assets
         if self.reports:
             payload["reports"] = self.reports
         return payload
+
+
+def _creative_assets_from_raw(raw: object) -> tuple[CreativeAsset, ...]:
+    if raw in (None, "", ()):
+        return ()
+    if isinstance(raw, dict):
+        raw_items = [raw]
+    elif isinstance(raw, list):
+        raw_items = raw
+    else:
+        raise ValueError("creative_assets must be an object or list of objects.")
+
+    assets: list[CreativeAsset] = []
+    for item in raw_items:
+        if not isinstance(item, dict):
+            raise ValueError("Each creative asset must be an object.")
+        assets.append(CreativeAsset.from_dict(item))
+    return tuple(assets)

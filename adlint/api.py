@@ -32,6 +32,7 @@ class AnalyzeRequest(BaseModel):
     log_path: str | None = None
     storage_enabled: bool = False
     storage_path: str | None = None
+    creative_assets: list[dict[str, Any]] = Field(default_factory=list)
 
     def to_analyze_config(self) -> dict[str, Any]:
         return self.model_dump(exclude_none=True)

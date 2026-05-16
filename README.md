@@ -74,6 +74,8 @@ make api  # then open http://127.0.0.1:8000/ui/
 - Optional `scoring.yml` threshold and weight overrides for team calibration.
 - JSON stdout, Markdown stdout, and paired JSON/Markdown report files.
 - Safer rewrite suggestions for high-risk and review-required findings.
+- Metadata-only `creative_assets` placeholders for future image, OCR, audio,
+  and video validators. Raw media is not read or stored by default.
 - Opt-in JSONL run logging for local evaluation workflows.
 - Opt-in SQLite metadata storage for scan summaries and eval scores.
 - Seed, benchmark, public-source real-case, and blind web-sourced eval runners.
@@ -92,6 +94,9 @@ make api  # then open http://127.0.0.1:8000/ui/
 - Playwright or trafilatura extraction. The current landing-page extractor is
   a small stdlib HTML parser that can read inline HTML, local files, or
   fetchable HTML URLs.
+- Image/video policy decisions. Creative asset metadata can be attached to
+  reports, but AdLint does not yet run OCR, frame analysis, speech-to-text, or
+  visual policy checks.
 - Fine-tuning. Local model support is available for decision support, but
   deterministic rules are the production baseline until live evals prove
   incremental value.
@@ -181,8 +186,8 @@ Example config:
 ```
 
 Optional input fields include `target_age_range`, `landing_page_url`,
-`model_enabled`, `model_affects_score`, `ollama_model`, `logging_enabled`,
-`log_path`, `storage_enabled`, and `storage_path`.
+`creative_assets`, `model_enabled`, `model_affects_score`, `ollama_model`,
+`logging_enabled`, `log_path`, `storage_enabled`, and `storage_path`.
 
 Use `platform: "all"` when you want one broad preflight pass across the
 platform-scoped policy modules AdLint currently ships. This is useful for early
@@ -201,8 +206,8 @@ adlint batch examples/batch_campaigns.csv --output-dir reports/batch
 
 CSV columns map to the same fields as the scan config, including `platform`,
 `industry`, `headline`, `body`, `cta`, `landing_page_url`,
-`landing_page_html`, and `policy_modules`. Separate multiple policy modules
-with `;`, `,`, or `|`.
+`landing_page_html`, `creative_assets`, and `policy_modules`. Use a JSON array
+for `creative_assets`. Separate multiple policy modules with `;`, `,`, or `|`.
 
 With `--output-dir`, AdLint writes:
 

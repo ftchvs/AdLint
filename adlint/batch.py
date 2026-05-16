@@ -14,6 +14,7 @@ from adlint.reports import to_markdown
 
 BOOLEAN_FIELDS = {"model_enabled", "model_affects_score", "logging_enabled", "storage_enabled"}
 LIST_FIELDS = {"policy_modules", "modules"}
+JSON_FIELDS = {"creative_assets", "assets"}
 PRIVATE_BATCH_FIELDS = {
     "body",
     "cta",
@@ -161,6 +162,8 @@ def _row_to_config(row: dict[str, str]) -> dict[str, Any]:
             continue
         if clean_key in BOOLEAN_FIELDS:
             config[clean_key] = _parse_bool(value)
+        elif clean_key in JSON_FIELDS:
+            config[clean_key] = json.loads(value)
         elif clean_key in LIST_FIELDS:
             config["policy_modules"] = _parse_list(value)
         else:

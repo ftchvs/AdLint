@@ -73,3 +73,39 @@ def test_report_writer_serializes_review_labels_and_landing_page_context(tmp_pat
     assert "- Disclaimers:" in markdown
     assert "  - Results vary. Review our privacy policy." in markdown
     assert "- Trackers: Meta Pixel" in markdown
+
+
+def test_report_includes_creative_asset_metadata_without_policy_claims() -> None:
+    result = analyze(
+        {
+            "platform": "meta",
+            "industry": "saas",
+            "headline": "Plan campaign launches",
+            "body": "Coordinate launch notes.",
+            "cta": "Learn more",
+            "creative_assets": [
+                {
+                    "kind": "image",
+                    "path": "creative/banner.png",
+                    "mime_type": "image/png",
+                    "notes": "Static banner for future OCR review.",
+                }
+            ],
+        }
+    )
+
+    payload = result.to_dict()
+    markdown = to_markdown(result)
+
+    assert payload["creative_assets"] == [
+        {
+            "kind": "image",
+            "path": "creative/banner.png",
+            "mime_type": "image/png",
+            "notes": "Static banner for future OCR review.",
+        }
+    ]
+    assert "## Creative Assets" in markdown
+    assert "metadata-only placeholder" in markdown
+    assert "Raw media files are not read or stored by default." in markdown
+    assert "visual compliance" not in markdown.lower()

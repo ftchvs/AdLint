@@ -139,6 +139,27 @@ def test_cli_batch_writes_local_archive_and_csv_summary(tmp_path, capsys) -> Non
     assert summary["rows"][0]["reports"]["json"] == str(Path(output_dir) / "client-a.json")
 
 
+def test_cli_batch_accepts_creative_asset_metadata_column(tmp_path, capsys) -> None:
+    csv_path = tmp_path / "ads.csv"
+    output_dir = tmp_path / "archive"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "id,platform,industry,headline,body,cta,creative_assets",
+                'asset-a,meta,saas,Plan campaign launches,Coordinate launch notes.,Learn more,"[{""kind"": ""image"", ""path"": ""banner.png""}]"',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert main(["batch", str(csv_path), "--output-dir", str(output_dir)]) == 0
+
+    capsys.readouterr()
+    report = json.loads((output_dir / "asset-a.json").read_text(encoding="utf-8"))
+    assert report["creative_assets"] == [{"kind": "image", "path": "banner.png"}]
+
+
 def test_cli_batch_markdown_summary_omits_raw_copy(tmp_path, capsys) -> None:
     csv_path = tmp_path / "ads.csv"
     csv_path.write_text(
