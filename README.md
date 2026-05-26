@@ -11,6 +11,23 @@ evidence, recommended actions, and safer rewrite suggestions.
 AdLint is decision-support software, not legal advice. It does not guarantee
 platform approval or make definitive statutory violation determinations.
 
+## Project status
+
+AdLint is an MVP with a working CLI, FastAPI service, local Web UI, policy
+engine, reports, and eval runners. It is ready for local experimentation and
+contributor feedback, but not a substitute for legal, compliance, or platform
+review.
+
+Best current use cases:
+
+- preflight risky ad copy before creative handoff
+- compare ad claims against explicit policy rules
+- generate explainable JSON/Markdown review reports
+- build eval cases for platform, privacy, disclosure, and brand-safety risk
+
+The next milestone is a stronger open-source contributor loop: more policy
+coverage, more synthetic and public-source eval cases, clearer benchmark
+reporting, and better Web UI accessibility.
 
 ## Why AdLint?
 
@@ -147,6 +164,22 @@ Docker Compose runs the bundled scan example and writes reports:
 ```bash
 docker compose up
 ```
+
+## Demo path
+
+Fastest local demo:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e ".[dev]"
+adlint scan examples/meta_high_risk_health.json --format markdown
+make api
+```
+
+Then open `http://127.0.0.1:8000/ui/` and try the bundled high-risk health
+example. Use synthetic examples only; do not paste private campaign or customer
+data into issues, docs, screenshots, or eval fixtures.
 
 ## CLI
 
@@ -578,6 +611,16 @@ High-value contribution areas:
 - Landing-page extraction improvements.
 - Safer rewrite-quality evaluation.
 - Docs, examples, screenshots, and launch polish.
+
+Contributor paths:
+
+- Add a policy rule when a risky claim pattern has clear evidence and a safer
+  recommended action.
+- Add an eval case when a current policy should catch or ignore a specific
+  synthetic example.
+- Improve reports or docs when review output is hard to understand.
+- Improve the local Web UI when a workflow is confusing, inaccessible, or hard
+  to demo.
 
 ## Accessibility
 
