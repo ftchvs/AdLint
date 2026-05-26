@@ -1,0 +1,34 @@
+name: Accessibility issue
+description: Report a barrier in the CLI, reports, docs, API docs, or Web UI.
+title: "[Accessibility]: "
+labels: ["accessibility"]
+body:
+  - type: textarea
+    id: barrier
+    attributes:
+      label: Accessibility barrier
+      description: What was difficult or impossible to use?
+    validations:
+      required: true
+  - type: textarea
+    id: surface
+    attributes:
+      label: Surface
+      description: CLI command, report, API page, Web UI screen, or documentation page.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser, terminal, operating system, screen reader, keyboard-only use, or other setup.
+  - type: textarea
+    id: sample
+    attributes:
+      label: Safe sample
+      description: Minimal synthetic sample input or output. Do not include private ad copy or customer data.
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What would make this accessible?

@@ -579,6 +579,11 @@ High-value contribution areas:
 - Safer rewrite-quality evaluation.
 - Docs, examples, screenshots, and launch polish.
 
+## Accessibility
+
+Accessibility expectations for the CLI, reports, docs, and local Web UI are in
+[ACCESSIBILITY.md](ACCESSIBILITY.md).
+
 ## Related docs
 
 - `docs/open_source_goal.md`
