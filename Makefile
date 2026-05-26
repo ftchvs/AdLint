@@ -6,7 +6,7 @@ MODEL_EVAL_FLAGS ?= --ollama-model gpt-oss-safeguard:20b
 ADLINT_OLLAMA_TIMEOUT ?= 180
 ADLINT_OLLAMA_NUM_PREDICT ?= 1024
 
-.PHONY: api creative-assets-eval dev landing-page-consistency eval benchmark benchmark-data policy-coverage policy-coverage-validate rewrite-quality model-benchmark model-smoke model-usefulness pr-preflight real-cases real-cases-ci real-cases-hybrid real-cases-model-quality real-cases-validate real-world-blind-candidates real-world-blind-ci real-world-blind-validate real-world-blind real-world-blind-model-quality research-summary scan test install
+.PHONY: api creative-assets-eval demo dev landing-page-consistency eval benchmark benchmark-data policy-coverage policy-coverage-validate rewrite-quality model-benchmark model-smoke model-usefulness pr-preflight real-cases real-cases-ci real-cases-hybrid real-cases-model-quality real-cases-validate real-world-blind-candidates real-world-blind-ci real-world-blind-validate real-world-blind real-world-blind-model-quality research-summary scan test install
 
 install: $(STAMP)
 
@@ -17,6 +17,9 @@ $(STAMP): pyproject.toml
 
 dev: $(STAMP)
 	$(BIN)/python -m adlint scan examples/high_risk_tiktok_health.json --output-dir reports
+
+demo: $(STAMP)
+	$(BIN)/python -m adlint demo --output-dir reports/demo
 
 api: $(STAMP)
 	ADLINT_OLLAMA_TIMEOUT=$(ADLINT_OLLAMA_TIMEOUT) ADLINT_OLLAMA_NUM_PREDICT=$(ADLINT_OLLAMA_NUM_PREDICT) $(BIN)/uvicorn adlint.api:app --reload --reload-dir adlint

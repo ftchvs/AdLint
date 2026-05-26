@@ -5,7 +5,7 @@ Status: deterministic rule benchmark v1.
 AdLint includes four labeled JSONL datasets:
 
 - `evals/datasets/seed_ads.jsonl`: the 58-example smoke set.
-- `evals/datasets/rule_benchmark_v1.jsonl`: a 209-example benchmark generated
+- `evals/datasets/rule_benchmark_v1.jsonl`: a 213-example benchmark generated
   from the seed set plus policy-author authored synthetic variants.
 - `evals/datasets/real_cases_v1.jsonl`: a 75-example public-source diagnostic
   set balanced across 25 approved, 25 needs-review, and 25 high-risk expected
@@ -29,7 +29,7 @@ Rebuild the committed benchmark dataset:
 make benchmark-data
 ```
 
-Run the 209-example benchmark and write JSON plus Markdown reports:
+Run the 213-example benchmark and write JSON plus Markdown reports:
 
 ```bash
 make benchmark
@@ -130,8 +130,8 @@ make real-world-blind-model-quality
 CI uses `make pr-preflight`, `make real-cases-ci`, and
 `make real-world-blind-ci`. The real-case gate requires 1.000 rule-only
 decision accuracy because this curated set should not regress. The blind
-holdout gate uses 0.90 rule-only decision accuracy against the current 0.967
-post-triage baseline, preserving room for known misses while still catching broad
+holdout gate uses 0.90 rule-only decision accuracy against the current 0.989
+rule-only baseline, preserving room for known misses while still catching broad
 reliability regressions. Both CI eval targets print compact summaries and
 upload full JSON/Markdown reports as workflow artifacts.
 
@@ -171,11 +171,11 @@ Current `rule_benchmark_v1` results from the local deterministic rule runner:
 
 | Metric | Value |
 | --- | ---: |
-| Total examples | 200 |
+| Total examples | 213 |
 | Decision accuracy | 1.000 |
-| Expected approved | 51 |
-| Expected needs_review | 50 |
-| Expected high_risk | 99 |
+| Expected approved | 44 |
+| Expected needs_review | 62 |
+| Expected high_risk | 107 |
 | Policy false-positive review notes | 0 |
 | Policy false-negative review notes | 0 |
 
@@ -183,9 +183,9 @@ Current confusion matrix:
 
 | Expected \ Actual | approved | needs_review | high_risk |
 | --- | ---: | ---: | ---: |
-| approved | 51 | 0 | 0 |
-| needs_review | 0 | 50 | 0 |
-| high_risk | 0 | 0 | 99 |
+| approved | 44 | 0 | 0 |
+| needs_review | 0 | 62 | 0 |
+| high_risk | 0 | 0 | 107 |
 
 Current category-level precision and recall:
 
@@ -201,8 +201,8 @@ Current category-level precision and recall:
 
 Interpretation: the 1.000 score is strong evidence that the deterministic
 rules and current benchmark labels are internally consistent. It is not a
-claim that future ads will pass review with 100% accuracy. If the 209 examples
-were a representative random sample, 209/209 correct decisions would imply an
+claim that future ads will pass review with 100% accuracy. If the 213 examples
+were a representative random sample, 213/213 correct decisions would imply an
 approximate 95% Wilson lower bound of 0.981, but this benchmark is authored
 regression coverage rather than a random production sample.
 

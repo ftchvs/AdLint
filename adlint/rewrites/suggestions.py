@@ -34,6 +34,12 @@ def _rewrite_for_hit(submission: Submission, hit: PolicyHit) -> dict[str, str]:
             "body": "Learn about options that may support healthy habits. Consult a qualified professional for medical questions.",
             "cta": "Learn more",
         }
+    if hit.category == "health_claims" or hit.policy_id.startswith("meta_health_"):
+        return {
+            "headline": "Support your wellness routine with daily nutrition",
+            "body": "Designed to complement healthy habits. Individual results vary.",
+            "cta": _soft_cta(submission.cta),
+        }
     if hit.category == "privacy":
         return {
             "headline": submission.headline or "Learn more before you sign up",

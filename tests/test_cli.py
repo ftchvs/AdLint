@@ -81,6 +81,36 @@ def test_cli_scan_markdown_format_includes_disclaimer(tmp_path, capsys) -> None:
     assert "brand_safety_politics" in output
 
 
+def test_cli_demo_runs_public_safe_sample_and_writes_reports(tmp_path, capsys) -> None:
+    output_dir = tmp_path / "demo"
+
+    assert main(["demo", "--output-dir", str(output_dir)]) == 0
+
+    output = capsys.readouterr().out
+    assert output.startswith("# AdLint Report")
+    assert "Decision: `high_risk`" in output
+    assert "Decision-Support Disclaimer" in output
+    assert "developed with evidence-informed guidance" not in output
+    assert "Support your wellness routine with daily nutrition" in output
+    assert (output_dir / "adlint-report.json").exists()
+    assert (output_dir / "adlint-report.md").exists()
+
+
+def test_cli_demo_json_stdout_remains_parseable(tmp_path, capsys) -> None:
+    output_dir = tmp_path / "demo"
+
+    assert main(["demo", "--output-dir", str(output_dir), "--format", "json"]) == 0
+
+    output = json.loads(capsys.readouterr().out)
+    assert output["decision"] == "high_risk"
+    assert output["reports"] == {
+        "json": str(output_dir / "adlint-report.json"),
+        "markdown": str(output_dir / "adlint-report.md"),
+    }
+    assert output["logging_enabled"] is False
+    assert output["model"] == {"enabled": False, "provider": None, "status": "disabled"}
+
+
 def test_cli_batch_prints_private_json_summary(tmp_path, capsys) -> None:
     csv_path = tmp_path / "ads.csv"
     csv_path.write_text(

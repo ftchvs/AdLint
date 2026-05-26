@@ -12,11 +12,37 @@ license = "MIT"
 authors = [
   { name = "AdLint Contributors" }
 ]
+keywords = [
+  "advertising",
+  "compliance",
+  "brand-safety",
+  "growth-marketing",
+  "policy-as-code",
+  "local-first",
+  "fastapi"
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Framework :: FastAPI",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Legal Industry",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Office/Business",
+  "Topic :: Software Development :: Quality Assurance"
+]
 dependencies = [
   "fastapi>=0.115",
   "PyYAML>=6.0.2",
   "uvicorn>=0.34"
 ]
+
+[project.urls]
+Homepage = "https://github.com/ftchvs/AdLint"
+Repository = "https://github.com/ftchvs/AdLint"
+Issues = "https://github.com/ftchvs/AdLint/issues"
 
 [project.optional-dependencies]
 dev = [
