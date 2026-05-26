@@ -74,10 +74,19 @@ AdLint should remain privacy-conscious:
 - Do not claim legal compliance, guaranteed platform approval, or definitive statutory determinations.
 - Keep local model features as decision support unless benchmarked evidence proves otherwise.
 
+## Accessibility expectations
+
+- Keep CLI output understandable without color alone.
+- Preserve JSON output for users who need structured or automated review.
+- Label Web UI form controls and keep keyboard focus visible.
+- Do not communicate severity, status, or risk only through color.
+- Add useful alt text for screenshots and diagrams.
+
 ## Pull request checklist
 
 - [ ] I ran relevant tests or documented why not.
 - [ ] I added/updated tests or eval rows for behavior changes.
 - [ ] I preserved decision-support and legal-boundary language.
 - [ ] I avoided adding private data, secrets, or raw real ad submissions.
+- [ ] I checked relevant accessibility expectations from [ACCESSIBILITY.md](ACCESSIBILITY.md).
 - [ ] I updated docs if the user-facing behavior changed.
