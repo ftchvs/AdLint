@@ -4,11 +4,11 @@
 
 - Source reviewed: `docs/adlint_hybrid_eval_paper.tex`
 - Output reviewed: `docs/build/adlint_hybrid_eval_paper.pdf`
-- Bundled Tectonic: `/Users/ftchvs/Developer/.agents/codex/plugins/cache/openai-bundled/latex-tectonic/0.1.0/bin/tectonic`
-- Compile command, run from `/Users/ftchvs/Developer/AdLint`:
+- Tectonic binary: use a local `tectonic` install or bundled Tectonic binary.
+- Compile command, run from the repository root:
 
 ```bash
-/Users/ftchvs/Developer/.agents/codex/plugins/cache/openai-bundled/latex-tectonic/0.1.0/bin/tectonic --outdir docs/build docs/adlint_hybrid_eval_paper.tex
+tectonic --outdir docs/build docs/adlint_hybrid_eval_paper.tex
 ```
 
 - Compile result: passed; PDF written to `docs/build/adlint_hybrid_eval_paper.pdf`.

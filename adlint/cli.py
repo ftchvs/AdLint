@@ -10,6 +10,21 @@ from adlint.engine import analyze
 from adlint.reports import to_markdown
 
 
+DEMO_CONFIG = {
+    "platform": "meta",
+    "country": "US",
+    "industry": "health",
+    "headline": "Lose 20 pounds in 30 days guaranteed",
+    "body": "Our clinically proven supplement melts fat fast with before and after results.",
+    "cta": "Buy now",
+    "landing_page_html": (
+        "<html><body><h1>Fast weight-loss results</h1>"
+        "<p>No prescription needed. Limited-time discount.</p></body></html>"
+    ),
+    "policy_modules": ["health_claims", "platform", "privacy", "landing_page"],
+}
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="adlint")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -94,6 +109,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Path to optional scoring.yml threshold and weight overrides.",
     )
 
+    demo_parser = subparsers.add_parser("demo", help="Run the bundled public-safe demo scan.")
+    demo_parser.add_argument(
+        "--output-dir",
+        default="reports/demo",
+        help="Write demo JSON and Markdown reports to this directory.",
+    )
+    demo_parser.add_argument(
+        "--format",
+        choices=("json", "markdown"),
+        default="markdown",
+        help="Format printed to stdout.",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "scan":
@@ -136,6 +164,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(summary_to_markdown(result))
         else:
             print(json.dumps(result, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "demo":
+        result = analyze(dict(DEMO_CONFIG), output_dir=args.output_dir)
+        if args.format == "json":
+            print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
+        else:
+            print(to_markdown(result))
         return 0
 
     parser.error(f"Unknown command: {args.command}")

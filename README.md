@@ -71,7 +71,7 @@ Example generated reports:
 Reproduce the CLI demo:
 
 ```bash
-adlint scan examples/meta_high_risk_health.json --format markdown --output-dir docs/assets/demo
+adlint demo --output-dir reports/demo
 make api  # then open http://127.0.0.1:8000/ui/
 ```
 
@@ -127,7 +127,7 @@ Requirements: Python 3.11 or newer. Docker is optional.
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e ".[dev]"
-adlint scan examples/high_risk_tiktok_health.json --output-dir reports
+adlint demo --output-dir reports/demo
 ```
 
 Without activating the virtual environment:
@@ -141,6 +141,7 @@ Makefile shortcuts:
 
 ```bash
 make dev   # install and run the high-risk example, writing reports/
+make demo  # install and run the bundled public-safe demo, writing reports/demo/
 make scan  # install and run the wellness example
 make api   # start uvicorn with adlint.api:app
 make eval  # run the seed evals and write evals/results/latest.json
@@ -173,13 +174,19 @@ Fastest local demo:
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e ".[dev]"
-adlint scan examples/meta_high_risk_health.json --format markdown
+adlint demo --output-dir reports/demo
 make api
 ```
 
 Then open `http://127.0.0.1:8000/ui/` and try the bundled high-risk health
 example. Use synthetic examples only; do not paste private campaign or customer
 data into issues, docs, screenshots, or eval fixtures.
+
+The demo command uses an embedded synthetic ad, so it works even before you
+choose or edit one of the example config files. It writes:
+
+- `reports/demo/adlint-report.json`
+- `reports/demo/adlint-report.md`
 
 ## CLI
 
@@ -203,6 +210,12 @@ adlint scan <config>
 - `--enable-storage` writes metadata-only SQLite scan storage.
 - `--storage-path <path>` sets the SQLite metadata database path and opts into
   storage.
+
+Run the built-in synthetic demo without preparing a config file:
+
+```bash
+adlint demo --output-dir reports/demo
+```
 
 Example config:
 
@@ -517,7 +530,7 @@ make real-world-blind-model-quality
 balanced across 30 approved, 30 needs-review, and 30 high-risk expected
 decisions. It is marked as a rule-tuning holdout and should be used to measure
 generalization before changing deterministic rules. The CI gate uses a 0.90
-decision-accuracy threshold against the current 0.967 post-triage rule-only
+decision-accuracy threshold against the current 0.989 rule-only
 baseline.
 
 Before opening eval/reliability PRs, run:
