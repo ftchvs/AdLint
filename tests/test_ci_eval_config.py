@@ -31,6 +31,6 @@ def test_github_actions_runs_packaging_gates_and_uploads_eval_artifacts() -> Non
     assert "make pr-preflight" in workflow
     assert "make real-cases-ci" in workflow
     assert "make real-world-blind-ci" in workflow
-    assert "actions/upload-artifact@v4" in workflow
+    assert "actions/upload-artifact@v6" in workflow
     assert "evals/results/*.json" in workflow
     assert "evals/results/*.md" in workflow
