@@ -55,6 +55,12 @@ def main() -> int:
         help="Minimum decision accuracy required for a zero exit code.",
     )
     parser.add_argument(
+        "--max-policy-false-positives",
+        type=int,
+        default=None,
+        help="Maximum total policy false positives allowed for a zero exit code.",
+    )
+    parser.add_argument(
         "--max-review-notes",
         type=int,
         default=25,
@@ -123,7 +129,16 @@ def main() -> int:
         )
     else:
         print(json.dumps(metrics, indent=2, sort_keys=True))
-    return 0 if _passes(metrics, min_accuracy=args.min_decision_accuracy, require_model=args.require_model) else 1
+    return (
+        0
+        if _passes(
+            metrics,
+            min_accuracy=args.min_decision_accuracy,
+            require_model=args.require_model,
+            max_policy_false_positives=args.max_policy_false_positives,
+        )
+        else 1
+    )
 
 
 def _positive_int(value: str) -> int:
@@ -160,16 +175,32 @@ def _attach_dataset(metrics: dict[str, Any], dataset: str) -> None:
                 _attach_dataset(mode_metrics, dataset)
 
 
-def _passes(metrics: dict[str, Any], *, min_accuracy: float, require_model: bool) -> bool:
+def _passes(
+    metrics: dict[str, Any],
+    *,
+    min_accuracy: float,
+    require_model: bool,
+    max_policy_false_positives: int | None = None,
+) -> bool:
     if metrics.get("mode") == "all":
         return all(
-            _passes(mode_metrics, min_accuracy=min_accuracy, require_model=require_model)
+            _passes(
+                mode_metrics,
+                min_accuracy=min_accuracy,
+                require_model=require_model,
+                max_policy_false_positives=max_policy_false_positives,
+            )
             for mode_metrics in metrics["modes"].values()
         )
     if require_model and metrics.get("model_required_failures"):
         return False
     if metrics["total_examples"] == 0:
         return not require_model
+    if (
+        max_policy_false_positives is not None
+        and _policy_metric_count(metrics, "false_positive_count") > max_policy_false_positives
+    ):
+        return False
     return metrics["decision_accuracy"] >= min_accuracy
 
 
@@ -221,6 +252,7 @@ def _compact_summary(
         }
 
     review_notes = metrics.get("review_notes", {})
+    false_positive_pressure = metrics.get("false_positive_pressure", {})
     return {
         "summary_version": 1,
         "dataset": metrics.get("dataset", "<unknown>"),
@@ -237,6 +269,14 @@ def _compact_summary(
             "decision_mismatches": _review_note_row_ids(review_notes.get("decision_mismatches", [])),
             "policy_false_positives": _review_note_row_ids(review_notes.get("false_positives", [])),
             "policy_false_negatives": _review_note_row_ids(review_notes.get("false_negatives", [])),
+        },
+        "false_positive_pressure": {
+            "guardrail_rows": int(false_positive_pressure.get("guardrail_rows", 0)),
+            "decision_overcall_count": int(false_positive_pressure.get("decision_overcall_count", 0)),
+            "rows_with_policy_false_positives": int(
+                false_positive_pressure.get("rows_with_policy_false_positives", 0)
+            ),
+            "policy_false_positive_count": int(false_positive_pressure.get("policy_false_positive_count", 0)),
         },
         "model_status_counts": dict(sorted(metrics.get("model_status_counts", {}).items())),
         "elapsed_seconds": metrics.get("elapsed_seconds", 0),
@@ -258,6 +298,7 @@ def _summary_lines(summary: dict[str, Any], *, include_review_rows: bool = True)
         f"decision_mismatches: {summary.get('decision_mismatch_count', 0)}",
         f"policy_false_negatives: {summary.get('policy_false_negative_count', 0)}",
         f"policy_false_positives: {summary.get('policy_false_positive_count', 0)}",
+        f"false_positive_pressure: {summary.get('false_positive_pressure', {})}",
         f"model_status_counts: {summary.get('model_status_counts', {})}",
         f"elapsed_seconds: {summary.get('elapsed_seconds', 0)}",
     ]
@@ -397,6 +438,9 @@ def _score_row(
         "category_true_positives": sorted(expected_categories & actual_categories),
         "category_false_negatives": sorted(expected_categories - actual_categories),
         "category_false_positives": sorted(actual_categories - expected_categories),
+        "false_positive_guardrail": bool(row.get("false_positive_guardrail", False)),
+        "near_miss_policy_ids": sorted(str(item) for item in row.get("near_miss_policy_ids", [])),
+        "reviewer_notes": str(row.get("reviewer_notes", "")),
     }
 
 
@@ -463,7 +507,39 @@ def _metrics(results: list[dict[str, Any]], *, max_review_notes: int = 25) -> di
         "model_status_counts": _model_status_counts(results),
         "model_required_failures": _model_required_failures(results),
         "review_notes": _review_notes(scored_results, max_notes=max_review_notes),
+        "false_positive_pressure": _false_positive_pressure(scored_results, max_notes=max_review_notes),
         "results": results,
+    }
+
+
+def _false_positive_pressure(results: list[dict[str, Any]], *, max_notes: int = 25) -> dict[str, Any]:
+    guardrails = [item for item in results if item.get("false_positive_guardrail")]
+    rows_with_policy_false_positives = [item for item in guardrails if item.get("policy_false_positives")]
+    decision_overcalls = [item for item in guardrails if item.get("decision_error_type") == "overcall"]
+    rows: list[dict[str, Any]] = []
+    for item in guardrails[:max_notes]:
+        rows.append(
+            {
+                "row_id": item["id"],
+                "expected_decision": item["expected_decision"],
+                "actual_decision": item["actual_decision"],
+                "decision_error_type": item["decision_error_type"],
+                "expected_policy_ids": item["expected_policy_ids"],
+                "actual_policy_ids": item["actual_policy_ids"],
+                "policy_false_positives": item["policy_false_positives"],
+                "near_miss_policy_ids": item["near_miss_policy_ids"],
+                "reviewer_notes": item["reviewer_notes"],
+            }
+        )
+
+    return {
+        "guardrail_rows": len(guardrails),
+        "expected_approved_rows": sum(1 for item in guardrails if item["expected_decision"] == "approved"),
+        "expected_review_rows": sum(1 for item in guardrails if item["expected_decision"] != "approved"),
+        "decision_overcall_count": len(decision_overcalls),
+        "rows_with_policy_false_positives": len(rows_with_policy_false_positives),
+        "policy_false_positive_count": sum(len(item.get("policy_false_positives", [])) for item in guardrails),
+        "rows": rows,
     }
 
 
@@ -846,6 +922,34 @@ def _markdown_report(metrics: dict[str, Any]) -> str:
     for expected, actual_counts in metrics["confusion_matrix"].items():
         counts = [str(actual_counts.get(actual, 0)) for actual in labels]
         lines.append("| " + expected + " | " + " | ".join(counts) + " |")
+
+    pressure = metrics.get("false_positive_pressure", {})
+    if pressure.get("guardrail_rows"):
+        lines.extend(
+            [
+                "",
+                "## False-Positive Pressure",
+                "",
+                f"- Guardrail rows: `{pressure.get('guardrail_rows', 0)}`",
+                f"- Expected approved rows: `{pressure.get('expected_approved_rows', 0)}`",
+                f"- Expected review-only rows: `{pressure.get('expected_review_rows', 0)}`",
+                f"- Decision overcalls: `{pressure.get('decision_overcall_count', 0)}`",
+                f"- Rows with policy false positives: `{pressure.get('rows_with_policy_false_positives', 0)}`",
+                f"- Policy false-positive count: `{pressure.get('policy_false_positive_count', 0)}`",
+                "",
+                "### Guardrail Rows",
+                "",
+            ]
+        )
+        for row in pressure.get("rows", []):
+            near_misses = ", ".join(row.get("near_miss_policy_ids", [])) or "none"
+            false_positives = ", ".join(row.get("policy_false_positives", [])) or "none"
+            note = row.get("reviewer_notes") or "No reviewer note supplied."
+            lines.append(
+                f"- `{row['row_id']}` expected `{row['expected_decision']}`, "
+                f"actual `{row['actual_decision']}`; near misses `{near_misses}`; "
+                f"policy false positives `{false_positives}`. {note}"
+            )
 
     lines.extend(["", "## Review Notes", ""])
     notes = metrics["review_notes"]

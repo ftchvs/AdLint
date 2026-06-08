@@ -196,6 +196,7 @@ def test_cli_batch_accepts_creative_asset_metadata_column(tmp_path, capsys) -> N
             "asset_id": "banner_png",
             "asset_type": "image",
             "filename": "banner.png",
+            "metadata_validation": {"findings": [], "status": "passed"},
             "text_metadata": {
                 "alt_text": False,
                 "labels": 0,
@@ -227,3 +228,43 @@ def test_cli_batch_markdown_summary_omits_raw_copy(tmp_path, capsys) -> None:
     assert "Batch summaries intentionally omit raw ad copy" in output
     assert "Lose 20 pounds" not in output
     assert "clinically proven supplement" not in output
+
+
+def test_cli_review_packet_builds_private_batch_handoff(tmp_path, capsys) -> None:
+    csv_path = tmp_path / "ads.csv"
+    archive_dir = tmp_path / "archive"
+    packet_dir = tmp_path / "packet"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "id,platform,industry,headline,body,cta",
+                "risk,tiktok,health,Lose 20 pounds in 30 days guaranteed,Our clinically proven supplement melts fat fast.,Buy now",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert main(["batch", str(csv_path), "--output-dir", str(archive_dir)]) == 0
+    capsys.readouterr()
+    assert main(["review-packet", str(archive_dir), "--output-dir", str(packet_dir)]) == 0
+
+    output = json.loads(capsys.readouterr().out)
+    manifest = json.loads((packet_dir / "manifest.json").read_text(encoding="utf-8"))
+    packet_markdown = (packet_dir / "review-packet.md").read_text(encoding="utf-8")
+    manifest_text = json.dumps(manifest)
+
+    assert output["manifest"] == str(packet_dir / "manifest.json")
+    assert manifest["source"]["type"] == "batch_archive"
+    assert manifest["summary"]["total_rows"] == 1
+    assert manifest["rows"][0]["reports"]["markdown"] == "reports/risk.md"
+    assert (packet_dir / "reports" / "risk.md").exists()
+    assert manifest["policy_sources"]
+    assert manifest["privacy"]["raw_creative_included"] is False
+    assert manifest["privacy"]["raw_media_copied"] is False
+    assert "Lose 20 pounds" not in manifest_text
+    assert "clinically proven supplement" not in manifest_text
+    assert str(csv_path) not in manifest_text
+    assert "Decision-Support Disclaimer" in (packet_dir / "reports" / "risk.md").read_text(encoding="utf-8")
+    assert "AdLint Review Packet" in packet_markdown
+    assert "reports/risk.md" in packet_markdown

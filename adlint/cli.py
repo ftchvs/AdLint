@@ -8,6 +8,7 @@ from adlint.batch import BatchOptions, run_batch, summary_to_markdown, to_summar
 from adlint.config import load_config
 from adlint.engine import analyze
 from adlint.reports import to_markdown
+from adlint.review_packet import build_review_packet
 
 
 DEMO_CONFIG = {
@@ -122,6 +123,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Format printed to stdout.",
     )
 
+    packet_parser = subparsers.add_parser("review-packet", help="Build a local reviewer handoff packet.")
+    packet_parser.add_argument(
+        "source_dir",
+        help="Directory containing an AdLint batch archive or single scan reports.",
+    )
+    packet_parser.add_argument(
+        "--output-dir",
+        required=True,
+        help="Write the review packet manifest, summary, and copied Markdown reports to this directory.",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "scan":
@@ -172,6 +184,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
         else:
             print(to_markdown(result))
+        return 0
+
+    if args.command == "review-packet":
+        packet = build_review_packet(args.source_dir, args.output_dir)
+        print(json.dumps(packet, indent=2, sort_keys=True))
         return 0
 
     parser.error(f"Unknown command: {args.command}")

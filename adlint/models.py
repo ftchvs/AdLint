@@ -120,6 +120,20 @@ class LandingPageSnapshot:
 
 
 @dataclass(frozen=True)
+class CreativeAssetValidationFinding:
+    field: str
+    severity: str
+    message: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "field": self.field,
+            "severity": self.severity,
+            "message": self.message,
+        }
+
+
+@dataclass(frozen=True)
 class CreativeAsset:
     asset_id: str
     asset_type: str = "unknown"
@@ -133,24 +147,40 @@ class CreativeAsset:
     transcript_excerpt: str = ""
     alt_text: str = ""
     labels: tuple[str, ...] = ()
+    validation_findings: tuple[CreativeAssetValidationFinding, ...] = ()
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any], *, index: int = 1) -> "CreativeAsset":
         filename = _basename(raw.get("filename") or raw.get("file_name") or raw.get("path") or raw.get("url"))
         asset_id = str(raw.get("asset_id") or raw.get("id") or filename or f"asset-{index}")
+        asset_type = _asset_type(raw.get("asset_type") or raw.get("kind") or raw.get("type") or raw.get("media_type"))
+        mime_type = _optional_str(raw.get("mime_type") or raw.get("content_type"))
+        width = _optional_int(raw.get("width"))
+        height = _optional_int(raw.get("height"))
+        duration_seconds = _optional_float(raw.get("duration_seconds") or raw.get("duration"))
+        file_size_bytes = _optional_int(raw.get("file_size_bytes") or raw.get("size_bytes"))
         return cls(
             asset_id=_safe_asset_id(asset_id, fallback=f"asset-{index}"),
-            asset_type=_asset_type(raw.get("asset_type") or raw.get("kind") or raw.get("type") or raw.get("media_type")),
+            asset_type=asset_type,
             filename=filename,
-            mime_type=_optional_str(raw.get("mime_type") or raw.get("content_type")),
-            width=_optional_int(raw.get("width")),
-            height=_optional_int(raw.get("height")),
-            duration_seconds=_optional_float(raw.get("duration_seconds") or raw.get("duration")),
-            file_size_bytes=_optional_int(raw.get("file_size_bytes") or raw.get("size_bytes")),
+            mime_type=mime_type,
+            width=width,
+            height=height,
+            duration_seconds=duration_seconds,
+            file_size_bytes=file_size_bytes,
             text_overlay=_optional_str(raw.get("text_overlay") or raw.get("ocr_text")) or "",
             transcript_excerpt=_optional_str(raw.get("transcript_excerpt") or raw.get("audio_transcript")) or "",
             alt_text=_optional_str(raw.get("alt_text") or raw.get("description")) or "",
             labels=tuple(str(item).strip() for item in _raw_list(raw.get("labels")) if str(item).strip()),
+            validation_findings=_validate_creative_asset_metadata(
+                raw,
+                asset_type=asset_type,
+                mime_type=mime_type,
+                width=width,
+                height=height,
+                duration_seconds=duration_seconds,
+                file_size_bytes=file_size_bytes,
+            ),
         )
 
     def text_fields(self, *, index: int) -> dict[str, str]:
@@ -187,6 +217,13 @@ class CreativeAsset:
         ):
             if value not in (None, ""):
                 payload[key] = value
+        if self.validation_findings:
+            payload["metadata_validation"] = {
+                "status": "needs_review",
+                "findings": [finding.to_dict() for finding in self.validation_findings],
+            }
+        else:
+            payload["metadata_validation"] = {"status": "passed", "findings": []}
         return payload
 
 
@@ -316,6 +353,79 @@ def _asset_type(value: Any) -> str:
     if normalized in {"image", "video", "audio", "display", "html5"}:
         return normalized
     return "unknown"
+
+
+def _validate_creative_asset_metadata(
+    raw: dict[str, Any],
+    *,
+    asset_type: str,
+    mime_type: str | None,
+    width: int | None,
+    height: int | None,
+    duration_seconds: float | None,
+    file_size_bytes: int | None,
+) -> tuple[CreativeAssetValidationFinding, ...]:
+    findings: list[CreativeAssetValidationFinding] = []
+
+    for field, keys, parsed in (
+        ("width", ("width",), width),
+        ("height", ("height",), height),
+        ("duration_seconds", ("duration_seconds", "duration"), duration_seconds),
+        ("file_size_bytes", ("file_size_bytes", "size_bytes"), file_size_bytes),
+    ):
+        if _has_any(raw, keys) and parsed is None:
+            findings.append(_asset_finding(field, "Declared value must be a non-negative number."))
+
+    for field, value in (
+        ("width", width),
+        ("height", height),
+        ("duration_seconds", duration_seconds),
+        ("file_size_bytes", file_size_bytes),
+    ):
+        if value is not None and value <= 0:
+            findings.append(_asset_finding(field, "Declared value must be greater than zero."))
+
+    if (width is None) != (height is None):
+        findings.append(_asset_finding("dimensions", "Width and height should be supplied together."))
+
+    if mime_type:
+        findings.extend(_validate_mime_type(asset_type, mime_type))
+
+    if asset_type == "image" and duration_seconds is not None:
+        findings.append(_asset_finding("duration_seconds", "Image assets should not declare duration."))
+    if asset_type == "audio" and (width is not None or height is not None):
+        findings.append(_asset_finding("dimensions", "Audio assets should not declare visual dimensions."))
+
+    return tuple(findings)
+
+
+def _validate_mime_type(asset_type: str, mime_type: str) -> list[CreativeAssetValidationFinding]:
+    normalized = mime_type.strip().lower()
+    findings: list[CreativeAssetValidationFinding] = []
+    if "/" not in normalized:
+        findings.append(_asset_finding("mime_type", "Declared MIME type should use type/subtype format."))
+        return findings
+
+    expected: dict[str, tuple[str, ...]] = {
+        "image": ("image/",),
+        "video": ("video/",),
+        "audio": ("audio/",),
+        "display": ("image/", "text/html", "application/zip", "application/x-zip-compressed"),
+        "html5": ("text/html", "application/zip", "application/x-zip-compressed"),
+    }
+    prefixes = expected.get(asset_type)
+    if prefixes and not any(normalized.startswith(prefix) for prefix in prefixes):
+        allowed = ", ".join(prefix.rstrip("/") for prefix in prefixes)
+        findings.append(_asset_finding("mime_type", f"{asset_type} assets should use one of: {allowed}."))
+    return findings
+
+
+def _asset_finding(field: str, message: str) -> CreativeAssetValidationFinding:
+    return CreativeAssetValidationFinding(field=field, severity="warning", message=message)
+
+
+def _has_any(raw: dict[str, Any], keys: tuple[str, ...]) -> bool:
+    return any(key in raw and raw[key] not in (None, "") for key in keys)
 
 
 def _basename(value: Any) -> str | None:

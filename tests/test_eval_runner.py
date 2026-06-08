@@ -213,6 +213,12 @@ def test_eval_runner_summary_only_preserves_full_output_file(tmp_path, monkeypat
             "json": str(output_path),
             "markdown": str(markdown_path),
         },
+        "false_positive_pressure": {
+            "decision_overcall_count": 0,
+            "guardrail_rows": 0,
+            "policy_false_positive_count": 0,
+            "rows_with_policy_false_positives": 0,
+        },
         "policy_false_negative_count": 1,
         "policy_false_positive_count": 1,
         "scored_rows": 2,
@@ -231,6 +237,55 @@ def test_eval_runner_summary_only_preserves_full_output_file(tmp_path, monkeypat
     assert '"results"' not in stdout
     assert file_metrics["results"][0]["id"] == "decision-miss"
     assert "## Review Notes" in markdown_path.read_text(encoding="utf-8")
+
+
+def test_eval_runner_false_positive_guardrail_metrics_and_threshold(tmp_path, monkeypatch, capsys) -> None:
+    dataset = tmp_path / "dataset.jsonl"
+    dataset.write_text(
+        json.dumps(
+            {
+                "id": "guardrail-policy-fp",
+                "false_positive_guardrail": True,
+                "near_miss_policy_ids": ["brand_safety_politics"],
+                "reviewer_notes": "Neutral civic planning copy should not become a politics hit.",
+                "input": {
+                    "platform": "google",
+                    "industry": "general",
+                    "headline": "Advertise near election analysis",
+                    "body": "Sponsor political coverage during ballot season.",
+                    "cta": "Request inventory",
+                },
+                "expected_decision": "needs_review",
+                "expected_policy_ids": [],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "run_eval.py",
+            str(dataset),
+            "--min-decision-accuracy",
+            "0",
+            "--max-policy-false-positives",
+            "0",
+        ],
+    )
+
+    assert run_eval.main() == 1
+
+    metrics = json.loads(capsys.readouterr().out)
+    assert metrics["policy_metrics"]["brand_safety_politics"]["false_positive_count"] == 1
+    assert metrics["false_positive_pressure"]["guardrail_rows"] == 1
+    assert metrics["false_positive_pressure"]["rows_with_policy_false_positives"] == 1
+    assert metrics["false_positive_pressure"]["rows"][0]["near_miss_policy_ids"] == ["brand_safety_politics"]
+    assert metrics["false_positive_pressure"]["rows"][0]["reviewer_notes"].startswith("Neutral civic")
+    markdown = run_eval._markdown_report(metrics)
+    assert "## False-Positive Pressure" in markdown
+    assert "Neutral civic planning copy should not become a politics hit." in markdown
 
 
 def test_eval_runner_summary_only_can_print_legacy_text(tmp_path, monkeypatch, capsys) -> None:

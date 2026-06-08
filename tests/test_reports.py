@@ -105,6 +105,7 @@ def test_report_includes_creative_asset_metadata_without_policy_claims() -> None
             "asset_type": "image",
             "filename": "banner.png",
             "height": 628,
+            "metadata_validation": {"findings": [], "status": "passed"},
             "mime_type": "image/png",
             "text_metadata": {
                 "alt_text": False,
@@ -117,8 +118,49 @@ def test_report_includes_creative_asset_metadata_without_policy_claims() -> None
     ]
     assert "## Creative Assets" in markdown
     assert "metadata-only" in markdown
+    assert "Metadata validation: passed" in markdown
     assert "Raw media files and local paths are not read or stored by default." in markdown
     assert "banner.png" in markdown
     assert "creative/banner.png" not in markdown
     assert "Plan every launch" not in markdown
     assert "visual compliance" not in markdown.lower()
+
+
+def test_report_surfaces_creative_asset_metadata_validation_without_reading_media() -> None:
+    result = analyze(
+        {
+            "platform": "linkedin",
+            "industry": "saas",
+            "headline": "Plan campaign launches",
+            "body": "Coordinate launch notes.",
+            "cta": "Learn more",
+            "creative_assets": [
+                {
+                    "asset_type": "image",
+                    "path": "/private/campaigns/video-as-image.mp4",
+                    "mime_type": "video/mp4",
+                    "width": 0,
+                    "duration_seconds": 12,
+                    "file_size_bytes": -1,
+                }
+            ],
+        }
+    )
+
+    payload = result.to_dict()
+    markdown = to_markdown(result)
+    validation = payload["creative_assets"][0]["metadata_validation"]
+
+    assert result.decision == "approved"
+    assert validation["status"] == "needs_review"
+    assert {finding["field"] for finding in validation["findings"]} == {
+        "dimensions",
+        "duration_seconds",
+        "file_size_bytes",
+        "mime_type",
+        "width",
+    }
+    assert "Metadata validation: needs review" in markdown
+    assert "`mime_type`: image assets should use one of: image." in markdown
+    assert "/private/campaigns" not in json.dumps(payload["creative_assets"])
+    assert "/private/campaigns" not in markdown

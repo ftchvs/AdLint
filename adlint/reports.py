@@ -106,6 +106,12 @@ def to_markdown(result: AnalysisResult) -> str:
             if asset.duration_seconds is not None:
                 details.append(f"{asset.duration_seconds:g}s")
             lines.append(f"- Asset {index}: {' | '.join(details)}")
+            if asset.validation_findings:
+                lines.append("  - Metadata validation: needs review")
+                for finding in asset.validation_findings:
+                    lines.append(f"    - `{finding.field}`: {finding.message}")
+            else:
+                lines.append("  - Metadata validation: passed")
             text_metadata = asset.to_dict()["text_metadata"]
             if any(text_metadata.values()):
                 lines.append("  - Text metadata supplied for local rule checks; text contents are not reprinted in this section.")

@@ -147,6 +147,7 @@ def test_creative_asset_text_overlay_uses_existing_policy_rules_without_raw_medi
             "asset_type": "image",
             "filename": "hero.png",
             "height": 1080,
+            "metadata_validation": {"findings": [], "status": "passed"},
             "mime_type": "image/png",
             "text_metadata": {
                 "alt_text": False,
@@ -175,6 +176,7 @@ def test_creative_asset_empty_metadata_does_not_create_policy_hit() -> None:
 
     assert result.decision == "approved"
     assert result.policy_hits == []
+    assert result.creative_assets[0].to_dict()["metadata_validation"] == {"findings": [], "status": "passed"}
 
 
 
