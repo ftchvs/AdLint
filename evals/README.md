@@ -14,6 +14,9 @@ platform approval.
 - `datasets/creative_asset_metadata_v1.jsonl`: focused rows for metadata-only
   creative asset inputs. These rows test supplied OCR/text-overlay metadata and
   empty asset metadata; they do not test native image/video analysis.
+- `datasets/false_positive_near_miss_v1.jsonl`: focused benign near-miss and
+  review-only rows for false-positive discipline before broadening policy
+  signals.
 - `datasets/real_cases_v1.jsonl`: 75 public-source, paraphrased real-case
   diagnostics balanced across 25 `approved`, 25 `needs_review`, and 25
   `high_risk` expected decisions. These rows come from public marketing pages,
@@ -44,6 +47,7 @@ Run focused workflow evals:
 ```bash
 make landing-page-consistency
 make creative-assets-eval
+make false-positive-near-miss
 ```
 
 Validate or refresh policy coverage inventory:
@@ -78,6 +82,20 @@ should become qualified wellness/nutrition copy, a health-form tracking row
 that should shift to consent and privacy review language, and a cure claim
 that should become general wellness support with professional-consult wording.
 
+Run false-positive near-miss evaluation separately from broad accuracy gates:
+
+```bash
+make false-positive-near-miss
+```
+
+`false_positive_near_miss_v1` rows are marked with
+`false_positive_guardrail: true` and include `reviewer_notes` plus
+`near_miss_policy_ids`. The eval runner reports a separate
+`false_positive_pressure` section with guardrail row counts, decision
+overcalls, rows with policy false positives, and row-level reviewer notes. The
+Make target requires zero policy false positives with
+`--max-policy-false-positives 0`.
+
 Run compact research-loop summaries:
 
 ```bash
@@ -87,8 +105,8 @@ make research-summary
 The target prints deterministic JSON summaries for the seed, benchmark,
 real-case, and blind-holdout datasets. These summaries include row counts,
 decision accuracy, decision mismatches, confusion deltas, policy false
-positive/negative counts, top review-note row IDs, model status counts, and
-elapsed seconds.
+positive/negative counts, false-positive pressure counts when guardrail rows
+are present, top review-note row IDs, model status counts, and elapsed seconds.
 
 The seed and benchmark datasets are complete-coverage gates for current
 policy ids. `real_cases_v1` is included in the inventory, but it remains

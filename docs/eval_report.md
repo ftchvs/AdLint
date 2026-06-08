@@ -139,6 +139,21 @@ Live local-model quality runs remain manual or scheduled diagnostics. They are
 not required CI because local inference is slow and the current evidence still
 supports deterministic rules as the production baseline.
 
+Run the false-positive near-miss guardrail before broadening policy signals:
+
+```bash
+make false-positive-near-miss
+```
+
+`evals/datasets/false_positive_near_miss_v1.jsonl` is a small guardrail set
+for benign near-misses and review-only labels: health-adjacent education,
+soft professional claims, offer/discount consistency, creator sponsorship
+disclosures, and platform-specific review boundaries. The target requires
+1.000 rule-only decision accuracy and `--max-policy-false-positives 0`, so it
+fails when a policy change adds overbroad hits even if the decision label still
+passes. Its Markdown report includes a separate false-positive pressure
+section with row-level reviewer notes.
+
 Direct command used by the benchmark target:
 
 ```bash
@@ -421,8 +436,11 @@ also show why model-only should not replace deterministic rules yet: the local
 model still undercalls rows and maps concerns to `model_policy_review` rather
 than the detailed YAML policy ids.
 
-The current benchmark test now fails if the adjudicated rule benchmark or
-real-case set produces policy false-positive or false-negative review notes.
+The current benchmark tests fail if the adjudicated rule benchmark or real-case
+set produces policy false-positive or false-negative review notes. The
+near-miss target adds a narrower false-positive pressure gate for benign copy
+and review-only labels that should not become high-risk or unrelated policy
+hits.
 
 For a paper-style summary of the benchmark design and result interpretation,
 see `docs/research_paper.md`. For the compiled LaTeX paper with charts,

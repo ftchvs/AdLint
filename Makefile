@@ -6,7 +6,7 @@ MODEL_EVAL_FLAGS ?= --ollama-model gpt-oss-safeguard:20b
 ADLINT_OLLAMA_TIMEOUT ?= 180
 ADLINT_OLLAMA_NUM_PREDICT ?= 1024
 
-.PHONY: api creative-assets-eval demo dev landing-page-consistency eval benchmark benchmark-data policy-coverage policy-coverage-validate rewrite-quality model-benchmark model-smoke model-usefulness pr-preflight real-cases real-cases-ci real-cases-hybrid real-cases-model-quality real-cases-validate real-world-blind-candidates real-world-blind-ci real-world-blind-validate real-world-blind real-world-blind-model-quality research-summary scan test install
+.PHONY: api creative-assets-eval demo dev false-positive-near-miss landing-page-consistency eval benchmark benchmark-data policy-coverage policy-coverage-validate rewrite-quality model-benchmark model-smoke model-usefulness pr-preflight real-cases real-cases-ci real-cases-hybrid real-cases-model-quality real-cases-validate real-world-blind-candidates real-world-blind-ci real-world-blind-validate real-world-blind real-world-blind-model-quality research-summary scan test install
 
 install: $(STAMP)
 
@@ -35,6 +35,9 @@ landing-page-consistency: $(STAMP)
 
 creative-assets-eval: $(STAMP)
 	$(BIN)/python evals/run_eval.py evals/datasets/creative_asset_metadata_v1.jsonl --min-decision-accuracy 1.0 --output evals/results/creative_asset_metadata_v1.json --markdown-output evals/results/creative_asset_metadata_v1.md
+
+false-positive-near-miss: $(STAMP)
+	$(BIN)/python evals/run_eval.py evals/datasets/false_positive_near_miss_v1.jsonl --min-decision-accuracy 1.0 --max-policy-false-positives 0 --summary-only --output evals/results/false_positive_near_miss_v1.json --markdown-output evals/results/false_positive_near_miss_v1.md
 
 research-summary: $(STAMP)
 	$(BIN)/python evals/run_eval.py evals/datasets/seed_ads.jsonl --summary-only --summary-format json --min-decision-accuracy 0

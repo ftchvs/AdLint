@@ -113,8 +113,9 @@ make api  # then open http://127.0.0.1:8000/ui/
   a small stdlib HTML parser that can read inline HTML, local files, or
   fetchable HTML URLs.
 - Native image/video analysis. Creative asset metadata can be attached to
-  reports and supplied text metadata can be checked by text rules, but AdLint
-  does not yet run OCR, frame analysis, speech-to-text, or visual policy checks.
+  reports, declared metadata can be validated, and supplied text metadata can
+  be checked by text rules, but AdLint does not yet run OCR, frame analysis,
+  speech-to-text, or visual policy checks.
 - Fine-tuning. Local model support is available for decision support, but
   deterministic rules are the production baseline until live evals prove
   incremental value.
@@ -149,6 +150,7 @@ make benchmark    # run the 213-row synthetic policy regression benchmark
 make policy-coverage           # refresh docs/policy_coverage_matrix.md
 make policy-coverage-validate  # check the committed coverage matrix
 make rewrite-quality # run the deterministic rewrite-quality rubric eval
+make false-positive-near-miss # guard benign near-misses against overbroad policy hits
 make pr-preflight # verify generated eval assets before opening an eval PR
 make real-cases   # run balanced public-source real-case diagnostics
 make real-cases-ci # run the strict real-case CI gate
@@ -266,7 +268,10 @@ those fields so the existing text rules can inspect them:
 ```
 
 Reports include sanitized asset metadata such as `filename`, dimensions, media
-type, and booleans showing which text metadata fields were supplied. Batch
+type, metadata-validation status, and booleans showing which text metadata
+fields were supplied. Metadata validation checks only declared fields such as
+MIME type, dimensions, duration, file size, and asset-type compatibility. It
+does not read, upload, OCR, transcribe, or visually classify raw media. Batch
 summaries omit the `creative_assets` column by default; per-row reports remain
 local when `--output-dir` is used.
 
@@ -299,6 +304,27 @@ With `--output-dir`, AdLint writes:
 
 The batch summary intentionally omits raw ad copy and landing-page HTML. Per-row
 reports stay local and contain the evidence snippets needed for review.
+
+### Review packet export
+
+Use `adlint review-packet` to turn a local batch archive or single scan report
+directory into a reviewer handoff packet:
+
+```bash
+adlint batch examples/batch_campaigns.csv --output-dir reports/batch
+adlint review-packet reports/batch --output-dir reports/review-packet
+```
+
+The packet includes:
+
+- `manifest.json` with decisions, risk scores, policy IDs, policy source links,
+  relative Markdown report paths, and generation metadata.
+- `review-packet.md` with a compact reviewer summary.
+- copied per-row Markdown reports under `reports/`.
+
+The packet manifest omits raw ad copy, landing-page URLs, raw landing-page HTML,
+raw creative paths, and raw media. It is for local reviewer handoff only and
+does not change AdLint's decision-support boundary.
 
 ## Scoring configuration
 
@@ -493,6 +519,18 @@ for clarity, risk reduction, policy fit, and intent preservation. It reports a
 `rewrite_quality` section and marks `decision_accuracy` as not measured.
 Deterministic rewrites remain the baseline before any model-generated rewrites
 are introduced.
+
+Run the false-positive near-miss guardrail before broadening policy signals:
+
+```bash
+make false-positive-near-miss
+```
+
+`false_positive_near_miss_v1` covers benign health-adjacent copy, soft
+professional claims, offer/discount language, creator disclosures, and
+platform-specific review labels. The target requires 1.000 rule-only decision
+accuracy and zero policy false positives, and the report includes a separate
+false-positive pressure section with reviewer notes.
 
 Run the public-source real-case diagnostics:
 

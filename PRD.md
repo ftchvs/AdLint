@@ -50,10 +50,15 @@ The review target includes:
 - Reports: JSON and Markdown reports include policy hits, evidence,
   recommended actions, rewrites, landing-page details, and the decision-support
   disclaimer.
+- Review packet export: local batch archives or single report directories can
+  be packaged into a manifest, reviewer summary, and copied Markdown reports
+  for local handoff without adding raw creative or raw landing-page data to the
+  manifest.
 - Rewrites: deterministic safer rewrite suggestions are generated for high-risk
   or review-required hits where feasible.
-- Seed evals: `evals/run_eval.py` scores the 50-example
-  `evals/datasets/seed_ads.jsonl` dataset.
+- Seed and focused evals: `evals/run_eval.py` scores the seed dataset plus
+  focused landing-page, creative-asset, false-positive near-miss, real-case,
+  and blind-holdout datasets.
 - Review hardening: tests cover CLI scanning, API endpoints, policy loading and
   filtering, report generation, documented examples, the seed eval runner, and
   opt-in logging behavior.
@@ -63,6 +68,9 @@ The review target includes:
   when explicitly enabled.
 - Opt-in SQLite metadata storage records scan and eval summaries only when
   explicitly enabled, without raw ad or landing-page fields.
+- Creative asset metadata validation checks declared MIME type, dimensions,
+  duration, file size, and asset-type compatibility without reading or
+  analyzing raw media.
 
 ### 2.2 Partial or future work
 
